@@ -1,7 +1,7 @@
 import type { Response } from 'express';
 import { Quiz, Submission, User, PerformanceHistory } from '../models/index.js';
-import { aiService } from '../services/aiService.js';
-import { emailService } from '../services/emailService.js';
+import { getAIService } from '../services/aiService.js';
+import { getEmailService } from '../services/emailService.js';
 import { cacheService } from '../services/cacheService.js';
 import { handleError, NotFoundError, BadRequestError } from '../utils/errorHandler.js';
 import { logger } from '../utils/logger.js';
@@ -92,6 +92,7 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
     };
 
     // Get AI evaluation
+    const aiService = getAIService();
     const { evaluation, model } = await aiService.evaluateSubmission(quiz.questions, evaluatedAnswers);
 
     // Get device info
@@ -133,6 +134,7 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
 
     // Send email if requested
     if (sendEmail && req.user.email) {
+      const emailService = getEmailService();
       emailService.sendQuizResultEmail(
           userId,
           req.user.email,

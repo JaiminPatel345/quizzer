@@ -1,6 +1,6 @@
 import type { Response } from 'express';
 import { Quiz, User, PerformanceHistory } from '../models/index.js';
-import { aiService } from '../services/aiService.js';
+import { getAIService } from '../services/aiService.js';
 import { cacheService } from '../services/cacheService.js';
 import { handleError, NotFoundError, BadRequestError } from '../utils/errorHandler.js';
 import { logger } from '../utils/logger.js';
@@ -55,6 +55,7 @@ export const generateQuiz = async (req: AuthRequest, res: Response): Promise<voi
     }
 
     // Generate quiz using AI
+    const aiService = getAIService();
     const { questions, model } = await aiService.generateQuiz({
       grade,
       subject,
@@ -335,6 +336,7 @@ export const requestHint = async (req: AuthRequest, res: Response): Promise<void
     }
 
     // Generate hint using AI
+    const aiService = getAIService();
     const { hint, model } = await aiService.generateHint(question);
 
     logger.info('Hint generated:', {

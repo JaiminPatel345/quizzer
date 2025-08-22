@@ -1,5 +1,7 @@
 #Dear sir this is not copy from github. I using git just for version control.
 
+.env
+
 node_modules
 .idea
 

@@ -1,6 +1,6 @@
 import type { Response } from 'express';
 import {Notification, Submission, User} from '../models/index.js';
-import { emailService } from '../services/index.js';
+import { getEmailService } from '../services/index.js';
 import { handleError, NotFoundError, BadRequestError } from '../utils/index.js';
 import { logger } from '../utils/logger.js';
 import type { AuthRequest } from '../middleware/index.js';
@@ -29,6 +29,7 @@ export const sendQuizResultEmail = async (req: AuthRequest, res: Response): Prom
     }
 
     // Send email
+    const emailService = getEmailService();
     const emailSent = await emailService.sendQuizResultEmail(
         userId,
         req.user.email,

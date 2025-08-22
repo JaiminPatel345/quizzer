@@ -27,12 +27,16 @@ interface QuizResultEmailData {
 
 class EmailService {
   private transporter: Transporter | null = null;
+  private initialized: boolean = false;
+  private available: boolean = false;
 
   constructor() {
-    this.initializeTransporter();
+    //do it lazily
   }
 
   private initializeTransporter(): void {
+    if (this.initialized) return;
+
     try {
       const emailHost = process.env.EMAIL_HOST;
       const emailPort = parseInt(process.env.EMAIL_PORT || '587');
@@ -40,7 +44,11 @@ class EmailService {
       const emailPassword = process.env.EMAIL_PASSWORD;
 
       if (!emailHost || !emailUser || !emailPassword) {
-        throw new Error('Email configuration missing in environment variables');
+        console.warn('⚠️  Email configuration missing - email service will be disabled');
+        logger.warn('Email configuration missing - email service will be disabled');
+        this.available = false;
+        this.initialized = true;
+        return;
       }
 
       this.transporter = nodemailer.createTransport({
@@ -59,18 +67,36 @@ class EmailService {
       // Verify connection
       this.transporter.verify((error, success) => {
         if (error) {
+          console.warn('⚠️  Email service verification failed:', error.message);
           logger.error('Email service verification failed:', error);
+          this.available = false;
         } else {
+          console.log('✅ Email service ready');
           logger.info('Email service ready');
+          this.available = true;
         }
       });
 
+      this.initialized = true;
+
     } catch (error) {
+      console.warn('⚠️  Failed to initialize email service:', error);
       logger.error('Failed to initialize email service:', error);
+      this.available = false;
+      this.initialized = true;
     }
   }
 
+
   async sendEmail(options: EmailOptions): Promise<boolean> {
+    // Initialize on first use
+    this.initializeTransporter();
+
+    if (!this.available || !this.transporter) {
+      logger.warn('Email service not available, skipping email send');
+      return false;
+    }
+
     try {
       if (!this.transporter) {
         throw new Error('Email transporter not initialized');
@@ -109,6 +135,14 @@ class EmailService {
       userEmail: string,
       quizData: QuizResultEmailData
   ): Promise<boolean> {
+
+    this.initializeTransporter();
+
+    if (!this.available) {
+      logger.warn('Email service not available, skipping quiz result email');
+      return false;
+    }
+
     try {
       const subject = `Quiz Results: ${quizData.quizTitle}`;
       const html = this.generateQuizResultHTML(quizData);
@@ -251,4 +285,17 @@ Quiz App Team
   }
 }
 
-export const emailService = new EmailService();
+// Export singleton with lazy initialization
+let emailServiceInstance: EmailService | null = null;
+
+export const emailService = {
+  getInstance(): EmailService {
+    if (!emailServiceInstance) {
+      emailServiceInstance = new EmailService();
+    }
+    return emailServiceInstance;
+  }
+};
+
+// For backward compatibility
+export const getEmailService = () => emailService.getInstance();

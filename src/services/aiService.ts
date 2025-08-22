@@ -22,49 +22,97 @@ interface EvaluationResult {
 }
 
 class AIService {
-  private groqClient: Groq;
-  private geminiClient: GoogleGenerativeAI;
-  private geminiModel: any;
+  private groqClient: Groq | null = null;
+  private geminiClient: GoogleGenerativeAI | null = null;
+  private geminiModel: any | null = null;
+  private initialized: boolean = false;
 
   constructor() {
-    // Initialize Groq
-    if (!process.env.GROQ_API_KEY) {
-      throw new Error('GROQ_API_KEY environment variable is required');
-    }
-    this.groqClient = new Groq({
-      apiKey: process.env.GROQ_API_KEY,
-    });
+    // Don't initialize here - do it lazily
+  }
 
-    // Initialize Gemini
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY environment variable is required');
+  private initializeClients(): void {
+    if (this.initialized) return;
+
+    try {
+      console.log('🔧 Initializing AI services...');
+      console.log('GROQ_API_KEY available:', !!process.env.GROQ_API_KEY);
+      console.log('GEMINI_API_KEY available:', !!process.env.GEMINI_API_KEY);
+
+      // Initialize Groq
+      const groqApiKey = process.env.GROQ_API_KEY;
+      if (!groqApiKey) {
+        console.warn('⚠️  GROQ_API_KEY not found, Groq client will be unavailable');
+        logger.warn('GROQ_API_KEY not found, Groq client will be unavailable');
+      } else {
+        this.groqClient = new Groq({
+          apiKey: groqApiKey,
+        });
+        console.log('✅ Groq client initialized');
+        logger.info('✅ Groq client initialized');
+      }
+
+      // Initialize Gemini
+      const geminiApiKey = process.env.GEMINI_API_KEY;
+      if (!geminiApiKey) {
+        console.warn('⚠️  GEMINI_API_KEY not found, Gemini client will be unavailable');
+        logger.warn('GEMINI_API_KEY not found, Gemini client will be unavailable');
+      } else {
+        this.geminiClient = new GoogleGenerativeAI(geminiApiKey);
+        this.geminiModel = this.geminiClient.getGenerativeModel({ model: 'gemini-pro' });
+        console.log('✅ Gemini client initialized');
+        logger.info('✅ Gemini client initialized');
+      }
+
+      // Check if at least one AI service is available
+      if (!this.groqClient && !this.geminiClient) {
+        throw new Error('No AI services available. Please provide GROQ_API_KEY and/or GEMINI_API_KEY in your .env file');
+      }
+
+      this.initialized = true;
+      console.log('🤖 AI Services initialization complete');
+      logger.info('🤖 AI Services initialization complete');
+
+    } catch (error) {
+      console.error('❌ Failed to initialize AI services:', error);
+      logger.error('Failed to initialize AI services:', error);
+      throw error;
     }
-    this.geminiClient = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    this.geminiModel = this.geminiClient.getGenerativeModel({ model: 'gemini-pro' });
   }
 
   async generateQuiz(params: QuizGenerationParams): Promise<{ questions: QuizQuestion[], model: 'groq' | 'gemini' }> {
+    // Initialize clients on first use
+    this.initializeClients();
+
     const prompt = this.buildQuizPrompt(params);
 
     try {
-      // Try Groq first
-      const result = await this.generateWithGroq(prompt);
-      return { questions: result, model: 'groq' };
+      // Try Groq first if available
+      if (this.groqClient) {
+        const result = await this.generateWithGroq(prompt);
+        return { questions: result, model: 'groq' };
+      }
     } catch (error) {
       logger.warn('Groq failed, falling back to Gemini:', error);
+    }
 
-      try {
-        // Fallback to Gemini
+    try {
+      // Fallback to Gemini if available
+      if (this.geminiClient && this.geminiModel) {
         const result = await this.generateWithGemini(prompt);
         return { questions: result, model: 'gemini' };
-      } catch (geminiError) {
-        logger.error('Both AI services failed:', { groqError: error, geminiError });
-        throw new Error('AI services unavailable. Please try again later.');
       }
+    } catch (geminiError) {
+      logger.error('Both AI services failed:', { geminiError });
     }
+
+    throw new Error('AI services unavailable. Please try again later.');
   }
 
   async generateHint(question: QuizQuestion): Promise<{ hint: string, model: 'groq' | 'gemini' }> {
+    // Initialize clients on first use
+    this.initializeClients();
+
     const prompt = `Generate a helpful hint for this question without revealing the answer:
     
     Question: ${question.questionText}
@@ -75,29 +123,46 @@ class AIService {
     Provide a subtle hint that guides the student towards the answer without giving it away directly.`;
 
     try {
-      const hint = await this.generateTextWithGroq(prompt);
-      return { hint, model: 'groq' };
+      if (this.groqClient) {
+        const hint = await this.generateTextWithGroq(prompt);
+        return { hint, model: 'groq' };
+      }
     } catch (error) {
       logger.warn('Groq hint generation failed, using Gemini:', error);
+    }
+
+    if (this.geminiClient && this.geminiModel) {
       const hint = await this.generateTextWithGemini(prompt);
       return { hint, model: 'gemini' };
     }
+
+    throw new Error('No AI services available for hint generation');
   }
 
   async evaluateSubmission(
       questions: QuizQuestion[],
       answers: SubmissionAnswer[]
   ): Promise<{ evaluation: EvaluationResult, model: 'groq' | 'gemini' }> {
+    // Initialize clients on first use
+    this.initializeClients();
+
     const prompt = this.buildEvaluationPrompt(questions, answers);
 
     try {
-      const evaluation = await this.evaluateWithGroq(prompt);
-      return { evaluation, model: 'groq' };
+      if (this.groqClient) {
+        const evaluation = await this.evaluateWithGroq(prompt);
+        return { evaluation, model: 'groq' };
+      }
     } catch (error) {
       logger.warn('Groq evaluation failed, using Gemini:', error);
+    }
+
+    if (this.geminiClient && this.geminiModel) {
       const evaluation = await this.evaluateWithGemini(prompt);
       return { evaluation, model: 'gemini' };
     }
+
+    throw new Error('No AI services available for evaluation');
   }
 
   private buildQuizPrompt(params: QuizGenerationParams): string {
@@ -178,6 +243,11 @@ Return ONLY a valid JSON object with this structure:
   }
 
   private async generateWithGroq(prompt: string): Promise<QuizQuestion[]> {
+    // Use non-null assertion since we know it's initialized at this point
+    if (!this.groqClient) {
+      throw new Error('Groq client not available');
+    }
+
     const response = await this.groqClient.chat.completions.create({
       messages: [
         {
@@ -189,7 +259,7 @@ Return ONLY a valid JSON object with this structure:
           content: prompt
         }
       ],
-      model: 'llama-3.1-70b-versatile', // Best free Groq model
+      model: 'llama-3.1-70b-versatile',
       max_tokens: 4000,
       temperature: 0.7,
     });
@@ -206,6 +276,10 @@ Return ONLY a valid JSON object with this structure:
   }
 
   private async generateWithGemini(prompt: string): Promise<QuizQuestion[]> {
+    if (!this.geminiModel) {
+      throw new Error('Gemini model not available');
+    }
+
     const result = await this.geminiModel.generateContent(prompt);
     const response = await result.response;
     const content = response.text();
@@ -221,6 +295,10 @@ Return ONLY a valid JSON object with this structure:
   }
 
   private async generateTextWithGroq(prompt: string): Promise<string> {
+    if (!this.groqClient) {
+      throw new Error('Groq client not available');
+    }
+
     const response = await this.groqClient.chat.completions.create({
       messages: [
         {
@@ -241,12 +319,20 @@ Return ONLY a valid JSON object with this structure:
   }
 
   private async generateTextWithGemini(prompt: string): Promise<string> {
+    if (!this.geminiModel) {
+      throw new Error('Gemini model not available');
+    }
+
     const result = await this.geminiModel.generateContent(prompt);
     const response = await result.response;
     return response.text();
   }
 
   private async evaluateWithGroq(prompt: string): Promise<EvaluationResult> {
+    if (!this.groqClient) {
+      throw new Error('Groq client not available');
+    }
+
     const response = await this.groqClient.chat.completions.create({
       messages: [
         {
@@ -275,6 +361,10 @@ Return ONLY a valid JSON object with this structure:
   }
 
   private async evaluateWithGemini(prompt: string): Promise<EvaluationResult> {
+    if (!this.geminiModel) {
+      throw new Error('Gemini model not available');
+    }
+
     const result = await this.geminiModel.generateContent(prompt);
     const response = await result.response;
     const content = response.text();
@@ -289,4 +379,16 @@ Return ONLY a valid JSON object with this structure:
   }
 }
 
-export const aiService = new AIService();
+let aiServiceInstance: AIService | null = null;
+
+export const aiService = {
+  getInstance(): AIService {
+    if (!aiServiceInstance) {
+      aiServiceInstance = new AIService();
+    }
+    return aiServiceInstance;
+  }
+};
+
+// For backward compatibility, also export the methods directly
+export const getAIService = () => aiService.getInstance();
