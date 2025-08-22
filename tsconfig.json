@@ -13,20 +13,7 @@
     "moduleResolution": "NodeNext",
     // For nodejs:
      "lib": ["ES2020"],
-    // and npm install -D @types/node
-
-    "include": [
-      "src/**/*"
-    ],
-    "exclude": [
-      "node_modules",
-      "dist",
-      "**/*.test.ts",
-      "**/*.spec.ts"
-    ],
-    "ts-node": {
-      "esm": true
-    },
+    // and npm install -D @types/nod
 
     // Other Outputs
     "sourceMap": true,
@@ -53,5 +40,17 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ],
+  "ts-node": {
+    "esm": true
   }
 }
