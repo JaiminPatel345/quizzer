@@ -7,13 +7,26 @@
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
-    "module": "nodenext",
-    "target": "esnext",
+    "module": "NodeNext",
+    "target": "ES2020",
     "types": [],
+    "moduleResolution": "NodeNext",
     // For nodejs:
-    // "lib": ["esnext"],
-    // "types": ["node"],
+     "lib": ["ES2020"],
     // and npm install -D @types/node
+
+    "include": [
+      "src/**/*"
+    ],
+    "exclude": [
+      "node_modules",
+      "dist",
+      "**/*.test.ts",
+      "**/*.spec.ts"
+    ],
+    "ts-node": {
+      "esm": true
+    },
 
     // Other Outputs
     "sourceMap": true,
