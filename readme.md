@@ -54,7 +54,7 @@ analytics.
 
 ### 🤖 AI-Powered Intelligence
 
-- **Smart Question Generation**: Using Groq (llama-3.1-70b-versatile) and Gemini 
+- **Smart Question Generation**: Using Groq and Gemini 
 - **Adaptive Difficulty**: Questions adapt to user performance history
 - **Intelligent Evaluation**: AI-powered feedback and improvement suggestions
 - **Context-Aware Hints**: Dynamic hint generation for learning support

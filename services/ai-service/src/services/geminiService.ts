@@ -17,7 +17,7 @@ class GeminiService {
       }
 
       this.client = new GoogleGenerativeAI(geminiApiKey);
-      this.model = this.client.getGenerativeModel({ model: 'gemini-pro' });
+      this.model = this.client.getGenerativeModel({ model: process.env.GEMINI_MODEL || 'gemini-2.0-flash' });
 
       console.log('✅ Gemini client initialized');
       logger.info('Gemini client initialized successfully');
@@ -26,6 +26,59 @@ class GeminiService {
     } catch (error) {
       console.error('❌ Failed to initialize Gemini client:', error);
       logger.error('Failed to initialize Gemini client:', error);
+      throw error;
+    }
+  }
+
+  private parseAIResponse(content: string): QuizQuestion[] {
+    try {
+      // Remove markdown code blocks completely
+      let cleaned = content.replace(/``````\s*$/g, '');
+      cleaned = cleaned.trim();
+
+      // Find JSON start
+      const jsonStart = Math.min(
+          cleaned.indexOf('[') !== -1 ? cleaned.indexOf('[') : cleaned.length,
+          cleaned.indexOf('{') !== -1 ? cleaned.indexOf('{') : cleaned.length
+      );
+
+      if (jsonStart < cleaned.length) {
+        cleaned = cleaned.substring(jsonStart);
+      }
+
+      // Find JSON end
+      const lastBracket = cleaned.lastIndexOf(']');
+      const lastBrace = cleaned.lastIndexOf('}');
+      const jsonEnd = Math.max(lastBracket, lastBrace);
+
+      if (jsonEnd !== -1) {
+        cleaned = cleaned.substring(0, jsonEnd + 1);
+      }
+
+      const parsed = JSON.parse(cleaned);
+
+      // Handle different response formats
+      if (Array.isArray(parsed)) {
+        return parsed as QuizQuestion[];
+      } else if (parsed.questions && Array.isArray(parsed.questions)) {
+        return parsed.questions as QuizQuestion[];
+      } else if (typeof parsed === 'object') {
+        const possibleArrays = ['questions', 'data', 'items', 'quiz'];
+        for (const key of possibleArrays) {
+          if (parsed[key] && Array.isArray(parsed[key])) {
+            return parsed[key] as QuizQuestion[];
+          }
+        }
+        throw new Error('Response object does not contain a questions array');
+      }
+
+      throw new Error('Unexpected response format');
+
+    } catch (error) {
+      logger.error('Failed to parse Gemini response:', {
+        error: (error as Error).message,
+        contentPreview: content.substring(0, 200)
+      });
       throw error;
     }
   }
@@ -46,9 +99,11 @@ class GeminiService {
       const content = response.text();
       const processingTime = Date.now() - startTime;
 
-      // Clean up response (remove markdown formatting if present)
-      const cleanContent = content.replace(/``````/g, '').trim();
-      const questions = JSON.parse(cleanContent);
+      if (!content) {
+        throw new Error('No content received from Gemini');
+      }
+
+      const questions = this.parseAIResponse(content);
 
       logger.info('Questions generated successfully with Gemini', {
         questionsCount: questions.length,
@@ -95,7 +150,7 @@ class GeminiService {
         processingTime
       });
 
-      return hint;
+      return hint.trim();
 
     } catch (error) {
       const processingTime = Date.now() - startTime;
@@ -123,8 +178,9 @@ class GeminiService {
       const content = response.text();
       const processingTime = Date.now() - startTime;
 
-      const cleanContent = content.replace(/``````/g, '').trim();
-      const evaluation = JSON.parse(cleanContent);
+      // Clean and parse JSON
+      let cleaned = content.replace(/``````\s*$/g, '').trim();
+      const evaluation = JSON.parse(cleaned);
 
       logger.info('Evaluation completed successfully with Gemini', {
         processingTime
@@ -147,7 +203,7 @@ class GeminiService {
 
     if (params.difficulty === 'mixed') {
       if (params.adaptiveParams?.difficultyDistribution) {
-        difficultyInstruction = `Mix difficulty levels based on user performance: ${JSON.stringify(params.adaptiveParams.difficultyDistribution)}`;
+        difficultyInstruction = `Mix difficulty levels: ${params.adaptiveParams.difficultyDistribution.easy}% easy, ${params.adaptiveParams.difficultyDistribution.medium}% medium, ${params.adaptiveParams.difficultyDistribution.hard}% hard`;
       } else {
         difficultyInstruction = 'Mix difficulty: 30% easy, 50% medium, 20% hard';
       }
@@ -155,63 +211,41 @@ class GeminiService {
       difficultyInstruction = `All questions should be ${params.difficulty} level`;
     }
 
-    return `Generate ${params.totalQuestions} quiz questions for Grade ${params.grade} ${params.subject}.
+    return `Generate exactly ${params.totalQuestions} quiz questions for Grade ${params.grade} ${params.subject}.
 
 Requirements:
 - ${difficultyInstruction}
-- Provide exactly ${params.totalQuestions} questions
 - Include a mix of question types: multiple choice, true/false, and short answer
 - Each question must have a clear correct answer and explanation
-- Generate 2-3 hints per question
 - Topics to focus on: ${params.topics?.join(', ') || 'curriculum-appropriate topics'}
 
-${params.adaptiveParams?.userPastPerformance ?
-        `User's past performance: ${JSON.stringify(params.adaptiveParams.userPastPerformance)}. Adjust accordingly.` : ''}
+CRITICAL: Return ONLY a JSON array starting with [ and ending with ]. No markdown, no explanations, no wrapper objects.
 
-Return ONLY a valid JSON array with this exact structure:
+Use this exact format (NO HINTS):
 [
   {
     "questionId": "q1",
-    "questionText": "Question text here",
-    "questionType": "mcq|true_false|short_answer",
-    "options": ["option1", "option2", "option3", "option4"],
-    "correctAnswer": "correct answer",
-    "explanation": "explanation text",
-    "difficulty": "easy|medium|hard",
+    "questionText": "What is the main purpose of Java?",
+    "questionType": "mcq",
+    "options": ["Web Development", "Mobile Apps", "Enterprise Applications", "All of the above"],
+    "correctAnswer": "All of the above",
+    "explanation": "Java is used for web, mobile, and enterprise development.",
+    "difficulty": "easy",
     "points": 1,
-    "hints": ["hint1", "hint2"],
-    "topic": "specific topic"
+    "topic": "Java Fundamentals"
   }
 ]`;
   }
 
   private buildEvaluationPrompt(questions: QuizQuestion[], answers: SubmissionAnswer[]): string {
-    const wrongAnswers = answers.filter(answer => !answer.isCorrect);
-
-    const wrongQuestionDetails = wrongAnswers.map(answer => {
-      const question = questions.find(q => q.questionId === answer.questionId);
-      return {
-        question: question?.questionText,
-        topic: question?.topic,
-        userAnswer: answer.userAnswer,
-        correctAnswer: question?.correctAnswer,
-        difficulty: question?.difficulty
-      };
-    });
-
     return `Analyze this quiz performance and provide feedback:
 
 Quiz Results:
 - Total Questions: ${questions.length}
 - Correct Answers: ${answers.filter(a => a.isCorrect).length}
-- Wrong Answers: ${wrongAnswers.length}
+- Wrong Answers: ${answers.filter(a => !a.isCorrect).length}
 
-Wrong Answer Details:
-${JSON.stringify(wrongQuestionDetails, null, 2)}
-
-Provide exactly 2 specific improvement suggestions and identify strengths/weaknesses.
-
-Return ONLY a valid JSON object with this structure:
+Return ONLY this JSON structure without markdown:
 {
   "suggestions": ["specific tip 1", "specific tip 2"],
   "strengths": ["strength1", "strength2"],
@@ -220,7 +254,6 @@ Return ONLY a valid JSON object with this structure:
   }
 }
 
-// Lazy initialization
 let geminiServiceInstance: GeminiService | null = null;
 
 export const getGeminiService = (): GeminiService => {

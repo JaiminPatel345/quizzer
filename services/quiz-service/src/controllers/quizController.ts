@@ -1,5 +1,5 @@
 import type { Response } from 'express';
-import { Quiz } from '../models/Quiz.js';
+import {IQuiz, Quiz} from '../models/Quiz.js';
 import { handleError, NotFoundError, BadRequestError, UnauthorizedError } from '../utils/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import type { AuthRequest } from '../types/index.js';
@@ -330,3 +330,62 @@ export const duplicateQuiz = async (req: AuthRequest, res: Response): Promise<vo
     handleError(res, 'duplicateQuiz', error as Error);
   }
 };
+
+export const updateQuestionHints = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      throw new UnauthorizedError('User not authenticated');
+    }
+
+    const { quizId, questionId } = req.params;
+    const { hints } = req.body;
+
+    const quiz = await Quiz.findById(quizId);
+
+    if (!quiz) {
+      throw new NotFoundError('Quiz');
+    }
+
+    // Check ownership
+    if (quiz.createdBy.toString() !== req.userId?.toString()) {
+      throw new UnauthorizedError('You can only update your own quizzes');
+    }
+
+    // Find the question
+    const questionIndex = quiz.questions.findIndex(q => q.questionId === questionId);
+
+    if (questionIndex === -1) {
+      throw new NotFoundError('Question not found in quiz');
+    }
+
+    // Update hints
+    if (quiz.questions[questionIndex]) {
+      quiz.questions[questionIndex].hints = hints;
+    }
+
+    quiz.version += 1;
+    await quiz.save();
+
+    logger.info('Question hints updated:', {
+      quizId: quiz._id,
+      questionId,
+      updatedBy: req.userId,
+      hintsCount: hints.length
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Question hints updated successfully',
+      data: {
+        quizId: quiz._id,
+        questionId,
+        hints,
+        version: quiz.version
+      }
+    });
+
+  } catch (error) {
+    handleError(res, 'updateQuestionHints', error as Error);
+  }
+};
+

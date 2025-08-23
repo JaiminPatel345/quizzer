@@ -4,6 +4,7 @@ import {
 } from '../config/serviceClient.js';
 import { handleError, UnauthorizedError } from '../utils/errorHandler.js';
 import type {AuthRequest} from '../types/index.js';
+import {logger} from '../utils/logger.js';
 
 export const authenticateToken = async (
     req: AuthRequest,
@@ -50,6 +51,7 @@ export const authenticateToken = async (
       if (serviceError.response?.status === 401) {
         throw new UnauthorizedError('Invalid or expired token');
       }
+      logger.error(serviceError.response.status, serviceError.response.statusText);
       throw new Error('Authentication service unavailable');
     }
 

@@ -1,6 +1,8 @@
 import Groq from 'groq-sdk';
-import { logger } from '../utils/logger.js';
-import type { QuizQuestion, QuizGenerationParams, SubmissionAnswer, EvaluationResult } from '../types/index.js';
+import {logger} from '../utils/logger.js';
+import type {
+  EvaluationResult, QuizGenerationParams, QuizQuestion, SubmissionAnswer,
+} from '../types/index.js';
 
 class GroqService {
   private client: Groq | null = null;
@@ -30,6 +32,70 @@ class GroqService {
     }
   }
 
+  private getAvailableModel(): string {
+    // Priority: .env file > current free models
+    const envModel = process.env.GROQ_MODEL;
+    if (envModel) {
+      return envModel;
+    }
+
+    // Current free available models (updated Aug 2025)
+    const freeModels = [
+      'llama-3.1-70b-versatile',
+      'llama-3.1-8b-instant',
+      'llama3-70b-8192',
+      'mixtral-8x7b-32768',
+    ];
+
+    return freeModels[0] as string;
+  }
+
+  private parseAIResponse(content: string): QuizQuestion[] {
+    try {
+      // Remove markdown code blocks
+      let cleaned = content.replace(/``````/g, '');
+      cleaned = cleaned.trim();
+
+      // Find JSON start
+      const jsonStart = Math.min(cleaned.indexOf('[') !== -1 ? cleaned.indexOf(
+              '[') : cleaned.length,
+          cleaned.indexOf('{') !== -1 ? cleaned.indexOf('{') : cleaned.length,
+      );
+
+      if (jsonStart < cleaned.length) {
+        cleaned = cleaned.substring(jsonStart);
+      }
+
+      // Parse JSON
+      const parsed = JSON.parse(cleaned);
+
+      // Handle different response formats
+      if (Array.isArray(parsed)) {
+        return parsed as QuizQuestion[];
+      } else if (parsed.questions && Array.isArray(parsed.questions)) {
+        return parsed.questions as QuizQuestion[];
+      } else if (typeof parsed === 'object') {
+        // If it's an object, try to extract array from common keys
+        const possibleArrays = ['questions', 'data', 'items', 'quiz'];
+        for (const key of possibleArrays) {
+          if (parsed[key] && Array.isArray(parsed[key])) {
+            return parsed[key] as QuizQuestion[];
+          }
+        }
+        throw new Error('Response object does not contain a questions array');
+      }
+
+      throw new Error('Unexpected response format');
+
+    } catch (error) {
+      logger.error('Failed to parse AI response:', {
+        error: (error as Error).message,
+        contentPreview: content.substring(0, 200),
+      });
+      throw error;
+    }
+  }
+
   async generateQuestions(params: QuizGenerationParams): Promise<QuizQuestion[]> {
     this.initializeClient();
 
@@ -45,16 +111,12 @@ class GroqService {
         messages: [
           {
             role: 'system',
-            content: 'You are an expert education content creator. Generate high-quality quiz questions in valid JSON format only.'
+            content: 'You are an expert education content creator. You MUST respond with ONLY a valid JSON array of quiz questions. Do not include any explanatory text, markdown formatting, or wrapper objects. Return directly the JSON array starting with [ and ending with ].',
+          }, {
+            role: 'user', content: prompt,
           },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        model: 'llama-3.1-70b-versatile',
-        max_tokens: 4000,
-        temperature: 0.7,
+        ], model: this.getAvailableModel(), max_completion_tokens: 4000, // Correct parameter name
+        temperature: 0.3,
       });
 
       const processingTime = Date.now() - startTime;
@@ -64,11 +126,12 @@ class GroqService {
         throw new Error('No content received from Groq');
       }
 
-      const questions = JSON.parse(content);
+      const questions = this.parseAIResponse(content);
 
       logger.info('Questions generated successfully with Groq', {
         questionsCount: questions.length,
-        processingTime
+        processingTime,
+        model: this.getAvailableModel(),
       });
 
       return questions;
@@ -77,7 +140,8 @@ class GroqService {
       const processingTime = Date.now() - startTime;
       logger.error('Groq question generation failed:', {
         error: (error as Error).message,
-        processingTime
+        processingTime,
+        model: this.getAvailableModel(),
       });
       throw error;
     }
@@ -106,15 +170,13 @@ class GroqService {
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful educational assistant. Provide clear, concise hints.'
+            content: 'You are a helpful educational assistant. Provide clear, concise hints. Respond with just the hint text, no additional formatting.',
+          }, {
+            role: 'user', content: prompt,
           },
-          {
-            role: 'user',
-            content: prompt
-          }
         ],
-        model: 'llama-3.1-70b-versatile',
-        max_tokens: 200,
+        model: this.getAvailableModel(),
+        max_completion_tokens: 200,
         temperature: 0.7,
       });
 
@@ -122,22 +184,26 @@ class GroqService {
       const hint = response.choices[0]?.message?.content || '';
 
       logger.info('Hint generated successfully with Groq', {
-        processingTime
+        processingTime, model: this.getAvailableModel(),
       });
 
-      return hint;
+      return hint.trim();
 
     } catch (error) {
       const processingTime = Date.now() - startTime;
       logger.error('Groq hint generation failed:', {
         error: (error as Error).message,
-        processingTime
+        processingTime,
+        model: this.getAvailableModel(),
       });
       throw error;
     }
   }
 
-  async evaluateSubmission(questions: QuizQuestion[], answers: SubmissionAnswer[]): Promise<EvaluationResult> {
+  async evaluateSubmission(
+      questions: QuizQuestion[],
+      answers: SubmissionAnswer[],
+  ): Promise<EvaluationResult> {
     this.initializeClient();
 
     if (!this.client) {
@@ -152,16 +218,14 @@ class GroqService {
         messages: [
           {
             role: 'system',
-            content: 'You are an expert educational evaluator. Provide constructive feedback in valid JSON format only.'
+            content: 'You are an expert educational evaluator. You MUST respond with ONLY valid JSON format. Do not include any explanatory text, markdown, or other content. Return only the JSON object.',
+          }, {
+            role: 'user', content: prompt,
           },
-          {
-            role: 'user',
-            content: prompt
-          }
         ],
-        model: 'llama-3.1-70b-versatile',
-        max_tokens: 1000,
-        temperature: 0.7,
+        model: this.getAvailableModel(),
+        max_completion_tokens: 1000,
+        temperature: 0.3,
       });
 
       const processingTime = Date.now() - startTime;
@@ -171,10 +235,12 @@ class GroqService {
         throw new Error('No content received from Groq');
       }
 
-      const evaluation = JSON.parse(content);
+      // Clean and parse JSON
+      let cleaned = content.replace(/``````/g, '').trim();
+      const evaluation = JSON.parse(cleaned);
 
       logger.info('Evaluation completed successfully with Groq', {
-        processingTime
+        processingTime, model: this.getAvailableModel(),
       });
 
       return evaluation;
@@ -183,7 +249,8 @@ class GroqService {
       const processingTime = Date.now() - startTime;
       logger.error('Groq evaluation failed:', {
         error: (error as Error).message,
-        processingTime
+        processingTime,
+        model: this.getAvailableModel(),
       });
       throw error;
     }
@@ -194,7 +261,7 @@ class GroqService {
 
     if (params.difficulty === 'mixed') {
       if (params.adaptiveParams?.difficultyDistribution) {
-        difficultyInstruction = `Mix difficulty levels based on user performance: ${JSON.stringify(params.adaptiveParams.difficultyDistribution)}`;
+        difficultyInstruction = `Mix difficulty levels: ${params.adaptiveParams.difficultyDistribution.easy}% easy, ${params.adaptiveParams.difficultyDistribution.medium}% medium, ${params.adaptiveParams.difficultyDistribution.hard}% hard`;
       } else {
         difficultyInstruction = 'Mix difficulty: 30% easy, 50% medium, 20% hard';
       }
@@ -202,49 +269,35 @@ class GroqService {
       difficultyInstruction = `All questions should be ${params.difficulty} level`;
     }
 
-    return `Generate ${params.totalQuestions} quiz questions for Grade ${params.grade} ${params.subject}.
+    return `Generate exactly ${params.totalQuestions} quiz questions for Grade ${params.grade} ${params.subject}.
 
 Requirements:
 - ${difficultyInstruction}
-- Provide exactly ${params.totalQuestions} questions
 - Include a mix of question types: multiple choice, true/false, and short answer
 - Each question must have a clear correct answer and explanation
-- Generate 2-3 hints per question
 - Topics to focus on: ${params.topics?.join(', ') || 'curriculum-appropriate topics'}
 
-${params.adaptiveParams?.userPastPerformance ?
-        `User's past performance: ${JSON.stringify(params.adaptiveParams.userPastPerformance)}. Adjust accordingly.` : ''}
+CRITICAL: Return ONLY a JSON array starting with [ and ending with ]. No markdown, no explanations, no wrapper objects.
 
-Return ONLY a valid JSON array with this exact structure:
+Use this exact format (NO HINTS):
 [
   {
     "questionId": "q1",
-    "questionText": "Question text here",
-    "questionType": "mcq|true_false|short_answer",
-    "options": ["option1", "option2", "option3", "option4"],
-    "correctAnswer": "correct answer",
-    "explanation": "explanation text",
-    "difficulty": "easy|medium|hard",
+    "questionText": "What is the main purpose of Java?",
+    "questionType": "mcq",
+    "options": ["Web Development", "Mobile Apps", "Enterprise Applications", "All of the above"],
+    "correctAnswer": "All of the above",
+    "explanation": "Java is used for web, mobile, and enterprise development.",
+    "difficulty": "easy",
     "points": 1,
-    "hints": ["hint1", "hint2"],
-    "topic": "specific topic"
+    "topic": "Java Fundamentals"
   }
 ]`;
   }
 
-  private buildEvaluationPrompt(questions: QuizQuestion[], answers: SubmissionAnswer[]): string {
+  private buildEvaluationPrompt(
+      questions: QuizQuestion[], answers: SubmissionAnswer[]): string {
     const wrongAnswers = answers.filter(answer => !answer.isCorrect);
-
-    const wrongQuestionDetails = wrongAnswers.map(answer => {
-      const question = questions.find(q => q.questionId === answer.questionId);
-      return {
-        question: question?.questionText,
-        topic: question?.topic,
-        userAnswer: answer.userAnswer,
-        correctAnswer: question?.correctAnswer,
-        difficulty: question?.difficulty
-      };
-    });
 
     return `Analyze this quiz performance and provide feedback:
 
@@ -253,12 +306,9 @@ Quiz Results:
 - Correct Answers: ${answers.filter(a => a.isCorrect).length}
 - Wrong Answers: ${wrongAnswers.length}
 
-Wrong Answer Details:
-${JSON.stringify(wrongQuestionDetails, null, 2)}
-
 Provide exactly 2 specific improvement suggestions and identify strengths/weaknesses.
 
-Return ONLY a valid JSON object with this structure:
+Return ONLY this JSON structure:
 {
   "suggestions": ["specific tip 1", "specific tip 2"],
   "strengths": ["strength1", "strength2"],
@@ -267,7 +317,6 @@ Return ONLY a valid JSON object with this structure:
   }
 }
 
-// Lazy initialization
 let groqServiceInstance: GroqService | null = null;
 
 export const getGroqService = (): GroqService => {

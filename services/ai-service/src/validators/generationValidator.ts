@@ -55,9 +55,114 @@ export const generateQuestionsSchema = {
     }),
 
     adaptiveParams: Joi.object({
-      userPastPerformance: Joi.object().optional(),
-      difficultyDistribution: Joi.object().optional()
-    }).optional()
+      userPastPerformance: Joi.object({
+        averageScore: Joi.number()
+        .min(0)
+        .max(100)
+        .required()
+        .messages({
+          'number.base': 'Average score must be a number',
+          'number.min': 'Average score cannot be negative',
+          'number.max': 'Average score cannot exceed 100',
+          'any.required': 'Average score is required in user past performance'
+        }),
+
+        totalQuizzes: Joi.number()
+        .integer()
+        .min(0)
+        .required()
+        .messages({
+          'number.base': 'Total quizzes must be a number',
+          'number.integer': 'Total quizzes must be an integer',
+          'number.min': 'Total quizzes cannot be negative',
+          'any.required': 'Total quizzes is required in user past performance'
+        }),
+
+        strongSubjects: Joi.array()
+        .items(Joi.string().trim().max(100))
+        .optional()
+        .messages({
+          'array.base': 'Strong subjects must be an array'
+        }),
+
+        weakSubjects: Joi.array()
+        .items(Joi.string().trim().max(100))
+        .optional()
+        .messages({
+          'array.base': 'Weak subjects must be an array'
+        }),
+
+        recentPerformance: Joi.array()
+        .items(
+            Joi.object({
+              score: Joi.number().min(0).max(100).optional(),
+              date: Joi.date().optional(),
+              subject: Joi.string().trim().max(100).optional()
+            })
+        )
+        .optional()
+        .messages({
+          'array.base': 'Recent performance must be an array'
+        })
+      }).optional(),
+
+      difficultyDistribution: Joi.object({
+        easy: Joi.number()
+        .min(0)
+        .max(100)
+        .required()
+        .messages({
+          'number.base': 'Easy percentage must be a number',
+          'number.min': 'Easy percentage cannot be negative',
+          'number.max': 'Easy percentage cannot exceed 100',
+          'any.required': 'Easy percentage is required in difficulty distribution'
+        }),
+
+        medium: Joi.number()
+        .min(0)
+        .max(100)
+        .required()
+        .messages({
+          'number.base': 'Medium percentage must be a number',
+          'number.min': 'Medium percentage cannot be negative',
+          'number.max': 'Medium percentage cannot exceed 100',
+          'any.required': 'Medium percentage is required in difficulty distribution'
+        }),
+
+        hard: Joi.number()
+        .min(0)
+        .max(100)
+        .required()
+        .messages({
+          'number.base': 'Hard percentage must be a number',
+          'number.min': 'Hard percentage cannot be negative',
+          'number.max': 'Hard percentage cannot exceed 100',
+          'any.required': 'Hard percentage is required in difficulty distribution'
+        })
+      })
+      .custom((value, helpers) => {
+        const { easy, medium, hard } = value;
+        const total = easy + medium + hard;
+
+        if (Math.abs(total - 100) > 0.01) { // Allow small floating point errors
+          return helpers.message({ custom: 'Difficulty distribution percentages must sum to 100' });
+        }
+
+        return value;
+      }, 'Difficulty Distribution Validation')
+      .optional()
+    })
+    .custom((value, helpers) => {
+      // At least one of userPastPerformance or difficultyDistribution must be provided
+      if (!value.userPastPerformance && !value.difficultyDistribution) {
+        return helpers.message({
+          custom: 'At least one of userPastPerformance or difficultyDistribution must be provided in adaptiveParams'
+        });
+      }
+
+      return value;
+    }, 'Adaptive Parameters Validation')
+    .optional()
   })
 };
 
