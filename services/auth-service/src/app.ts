@@ -4,8 +4,9 @@ import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
-import { logger } from './utils/logger.js';
+import {logger} from './utils/logger.js';
 import authRoutes from './routes/auth.js';
+import userRoutes from './routes/user.js';
 
 class AuthServiceApp {
   public app: express.Application;
@@ -20,8 +21,7 @@ class AuthServiceApp {
   private initializeMiddlewares(): void {
     // Security middleware
     this.app.use(helmet({
-      contentSecurityPolicy: false,
-      crossOriginEmbedderPolicy: false
+      contentSecurityPolicy: false, crossOriginEmbedderPolicy: false,
     }));
 
     // CORS
@@ -31,7 +31,7 @@ class AuthServiceApp {
           : ['http://localhost:3000', 'http://localhost:3001'],
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization']
+      allowedHeaders: ['Content-Type', 'Authorization'],
     }));
 
     // Compression
@@ -42,13 +42,13 @@ class AuthServiceApp {
       stream: {
         write: (message: string) => {
           logger.info(message.trim());
-        }
-      }
+        },
+      },
     }));
 
     // Body parsing
-    this.app.use(express.json({ limit: '10mb' }));
-    this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+    this.app.use(express.json({limit: '10mb'}));
+    this.app.use(express.urlencoded({extended: true, limit: '10mb'}));
 
     // Trust proxy
     this.app.set('trust proxy', 1);
@@ -56,7 +56,7 @@ class AuthServiceApp {
     // General rate limiting
     this.app.use(rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 100 // limit each IP to 100 requests per windowMs
+      limit: 100, // limit each IP to 100 requests per windowMs
     }));
   }
 
@@ -67,12 +67,13 @@ class AuthServiceApp {
         success: true,
         service: 'auth-service',
         status: 'healthy',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     });
 
     // Auth routes
     this.app.use('/api/auth', authRoutes);
+    this.app.use('/api/user', userRoutes);
 
     // Root endpoint
     this.app.get('/', (req, res) => {
@@ -81,9 +82,8 @@ class AuthServiceApp {
         message: 'Auth Service API',
         version: '1.0.0',
         endpoints: {
-          health: '/health',
-          auth: '/api/auth'
-        }
+          health: '/health', auth: '/api/auth',
+        },
       });
     });
   }
@@ -92,29 +92,29 @@ class AuthServiceApp {
     // 404 handler
     this.app.use('*', (req, res) => {
       res.status(404).json({
-        success: false,
-        error: {
-          message: `Route ${req.originalUrl} not found`,
-          code: 'ROUTE_NOT_FOUND'
-        }
+        success: false, error: {
+          message: `Route ${req.originalUrl} not found`, code: 'ROUTE_NOT_FOUND',
+        },
       });
     });
 
     // Global error handler
-    this.app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    this.app.use((
+        error: any, req: express.Request, res: express.Response,
+        next: express.NextFunction,
+    ) => {
       logger.error('Global error handler:', {
         message: error.message,
         stack: error.stack,
         url: req.originalUrl,
-        method: req.method
+        method: req.method,
       });
 
       res.status(error.statusCode || 500).json({
-        success: false,
-        error: {
+        success: false, error: {
           message: error.message || 'Internal Server Error',
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       });
     });
   }
