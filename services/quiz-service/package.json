@@ -1,0 +1,43 @@
+{
+  "name": "quiz-service",
+  "version": "1.0.0",
+  "description": "Quiz Content Management Service",
+  "main": "dist/index.js",
+  "type": "module",
+  "author": "Jaimin Detroja",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "clean": "rimraf dist",
+    "lint": "eslint src --ext .ts",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@types/express": "^5.0.3",
+    "add": "^2.0.6",
+    "axios": "^1.11.0",
+    "compression": "^1.8.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.0.1",
+    "helmet": "^8.1.0",
+    "joi": "^18.0.1",
+    "mongoose": "^8.18.0",
+    "morgan": "^1.10.1",
+    "redis": "^5.8.2",
+    "winston": "^3.17.0",
+    "yarn": "^1.22.22"
+  },
+  "devDependencies": {
+    "@types/compression": "^1.8.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^24.3.0",
+    "rimraf": "^6.0.1",
+    "tsx": "^4.20.4",
+    "typescript": "^5.9.2"
+  }
+}

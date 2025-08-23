@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # Infrastructure
+  mongodb:
+    image: mongo:7
+    container_name: quiz-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: quiz_admin
+      MONGO_INITDB_ROOT_PASSWORD: quiz_password
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - quiz-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: quiz-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - quiz-network
+
+  # Services (will be added as we create them)
+  auth-service:
+    build: ./services/auth-service
+    container_name: quiz-auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - MONGODB_URI=mongodb://quiz_admin:quiz_password@mongodb:27017/quiz_auth_db?authSource=admin
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - quiz-network
+    volumes:
+      - ./services/auth-service:/app
+      - /app/node_modules
+
+  # Load Balancer (Future)
+  # nginx:
+  #   build: ./gateway/nginx
+  #   ports:
+  #     - "80:80"
+  #   depends_on:
+  #     - auth-service
+  #   networks:
+  #     - quiz-network
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  quiz-network:
+    driver: bridge
