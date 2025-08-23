@@ -1,7 +1,7 @@
 import type { Response } from 'express';
 import { Submission } from '../models/Submission.js';
 import { ScoringService } from '../services/scoringService.js';
-import { getQuizServiceClient, getAIServiceClient } from '../config/serviceClient.js';
+import { getQuizServiceClient, getAIServiceClient, getAnalyticsServiceClient } from '../config/serviceClient.js';
 import { handleError, NotFoundError, BadRequestError, UnauthorizedError } from '../utils/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import type { AuthRequest, QuizQuestion, SubmissionScoring, SubmissionTiming } from '../types/index.js';
@@ -12,20 +12,14 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
       throw new UnauthorizedError('User not authenticated');
     }
 
-    const { quizId, answers, startedAt, submittedAt, requestEvaluation } = req.body;
+    const { quizId, answers, startedAt, submittedAt, requestEvaluation = true } = req.body;
     const userId = req.user._id;
 
-    // Fetch quiz from quiz service
+    // 1. Fetch quiz from quiz service
     const quizServiceClient = getQuizServiceClient();
     const quizResponse = await quizServiceClient.get<{
       success: boolean;
-      data: {
-        quiz: {
-          _id: string;
-          questions: QuizQuestion[];
-          metadata: any;
-        };
-      };
+      data: { quiz: any };
     }>(`/api/quiz/${quizId}`, {
       headers: { Authorization: req.headers.authorization as string }
     });
@@ -36,24 +30,11 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
 
     const quiz = quizResponse.data.quiz;
 
-    // Validate submission timing
-    const startTime = new Date(startedAt);
-    const endTime = new Date(submittedAt);
-    const totalTimeSpent = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
-
-    if (totalTimeSpent < 0) {
-      throw new BadRequestError('Invalid submission timing');
-    }
-
-    // Check for existing attempts
-    const existingAttempts = await Submission.countDocuments({ userId, quizId });
-    const attemptNumber = existingAttempts + 1;
-
-    // Calculate scores using scoring service
+    // 2. Calculate scores
     const evaluatedAnswers = ScoringService.calculateScore(quiz.questions, answers);
     const statistics = ScoringService.calculateStatistics(evaluatedAnswers);
 
-    const scoring: SubmissionScoring = {
+    const scoring = {
       totalQuestions: statistics.totalQuestions,
       correctAnswers: statistics.correctAnswers,
       totalPoints: statistics.totalPoints,
@@ -61,48 +42,37 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
       grade: statistics.grade
     };
 
-    const timing: SubmissionTiming = {
-      startedAt: startTime,
-      submittedAt: endTime,
-      totalTimeSpent
+    const timing = {
+      startedAt: new Date(startedAt),
+      submittedAt: new Date(submittedAt),
+      totalTimeSpent: Math.floor((new Date(submittedAt).getTime() - new Date(startedAt).getTime()) / 1000)
     };
 
-    // Get device info
-    const userAgent = req.get('User-Agent') || 'Unknown';
-    const deviceType = /Mobile|Android|iPhone|iPad/.test(userAgent) ? 'mobile' :
-        /Tablet/.test(userAgent) ? 'tablet' : 'desktop';
-
-    // Create submission
+    // 3. Create submission
     const submission = new Submission({
       quizId,
       userId,
-      attemptNumber,
+      attemptNumber: await Submission.countDocuments({ userId, quizId }) + 1,
       answers: evaluatedAnswers,
       scoring,
       timing,
       metadata: {
         ipAddress: req.ip || 'Unknown',
-        userAgent,
-        deviceType
+        userAgent: req.get('User-Agent') || 'Unknown',
+        deviceType: /Mobile|Android|iPhone|iPad/.test(req.get('User-Agent') || '') ? 'mobile' : 'desktop'
       },
       isCompleted: true
     });
 
-    // Request AI evaluation if requested
+    // 4. Request AI evaluation if requested
     if (requestEvaluation) {
       try {
         const aiServiceClient = getAIServiceClient();
         const evaluationResponse = await aiServiceClient.post<{
           success: boolean;
           data: {
-            evaluation: {
-              suggestions: string[];
-              strengths: string[];
-              weaknesses: string[];
-            };
-            metadata: {
-              model: 'groq' | 'gemini';
-            };
+            evaluation: any;
+            metadata: { model: 'groq' | 'gemini' };
           };
         }>('/api/ai/evaluate/submission', {
           questions: quiz.questions,
@@ -122,36 +92,53 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
         }
       } catch (aiError) {
         logger.warn('AI evaluation failed:', aiError);
-        // Continue without evaluation - don't fail the submission
       }
     }
 
     await submission.save();
 
-    logger.info('Quiz submitted successfully:', {
+    // 5. Update analytics automatically
+    try {
+      const analyticsServiceClient = getAnalyticsServiceClient();
+      await analyticsServiceClient.post('/api/analytics/performance/update', {
+        subject: quiz.metadata.subject,
+        grade: quiz.metadata.grade,
+        submissionData: {
+          quizId: submission.quizId,
+          scoring: submission.scoring,
+          timing: submission.timing,
+          answers: evaluatedAnswers,
+          difficulty: quiz.metadata.difficulty
+        }
+      }, {
+        headers: { Authorization: req.headers.authorization as string}
+      });
+    } catch (analyticsError) {
+      logger.warn('Analytics update failed:', analyticsError);
+    }
+
+    logger.info('Quiz submitted with full integration:', {
       userId,
       quizId,
       submissionId: submission._id,
-      score: scoring.scorePercentage,
-      attemptNumber
+      score: scoring.scorePercentage
     });
-
-    const { answers: _, ...submissionResponse } = submission.toObject();
 
     res.status(201).json({
       success: true,
       message: 'Quiz submitted successfully',
       data: {
         submission: {
-          ...submissionResponse,
-          answersCount: evaluatedAnswers.length
+          _id: submission._id,
+          scoring,
+          timing,
+          aiEvaluation: submission.aiEvaluation
         },
         results: {
           score: scoring.scorePercentage,
           grade: scoring.grade,
           correctAnswers: scoring.correctAnswers,
           totalQuestions: scoring.totalQuestions,
-          totalTimeSpent: timing.totalTimeSpent,
           suggestions: submission.aiEvaluation?.suggestions || [],
           strengths: submission.aiEvaluation?.strengths || [],
           weaknesses: submission.aiEvaluation?.weaknesses || []

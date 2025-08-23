@@ -85,6 +85,7 @@ class ServiceClient {
 // Lazy initialization to avoid constructor call before dotenv loads
 let authServiceClientInstance: ServiceClient | null = null;
 let aiServiceClientInstance: ServiceClient | null = null;
+let analyticsServiceClientInstance: ServiceClient | null = null;
 
 export const getAuthServiceClient = (): ServiceClient => {
   if (!authServiceClientInstance) {
@@ -107,6 +108,18 @@ export const getAiServiceClient = (): ServiceClient => {
   }
   return aiServiceClientInstance;
 };
+
+export const getAnalyticsServiceClient = (): ServiceClient => {
+  if (!analyticsServiceClientInstance) {
+    analyticsServiceClientInstance = new ServiceClient({
+      baseURL: process.env.ANALYTICS_SERVICE_URL || 'http://localhost:3005',
+      timeout: 10000,
+      retries: 3
+    });
+  }
+  return analyticsServiceClientInstance;
+};
+
 
 // For backward compatibility (but use getters instead)
 export const authServiceClient = {
