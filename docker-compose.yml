@@ -1,81 +1,37 @@
 version: '3.8'
 
 services:
-  # MongoDB Database
-  mongo:
-    image: mongo:7-jammy
-    container_name: quizzer-mongo
-    restart: unless-stopped
-    environment:
-      MONGO_INITDB_DATABASE: quizzer
-    volumes:
-      - mongo_data:/data/db
-    ports:
-      - "27017:27017"
-    networks:
-      - quizzer-network
-
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: quizzer-redis
-    restart: unless-stopped
-    volumes:
-      - redis_data:/data
-    ports:
-      - "6379:6379"
-    networks:
-      - quizzer-network
-
   # Auth Service
   auth-service:
     build:
-      context: ./services/auth-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/auth-service/Dockerfile
     container_name: quizzer-auth
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      - NODE_ENV=${NODE_ENV}
-      - MONGODB_URI=${MONGODB_URI}
-      - REDIS_URL=${REDIS_URL}
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
-      - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN}
       - PORT=${AUTH_SERVICE_PORT}
-      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
-      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
-      - LOG_LEVEL=${LOG_LEVEL}
     ports:
       - "${AUTH_SERVICE_PORT}:${AUTH_SERVICE_PORT}"
-    depends_on:
-      - mongo
-      - redis
     networks:
       - quizzer-network
 
   # AI Service
   ai-service:
     build:
-      context: ./services/ai-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/ai-service/Dockerfile
     container_name: quizzer-ai
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      - NODE_ENV=${NODE_ENV}
-      - MONGODB_URI=${MONGODB_URI}
-      - REDIS_URL=${REDIS_URL}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - AUTH_SERVICE_URL=${AUTH_SERVICE_URL}
       - PORT=${AI_SERVICE_PORT}
-      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
-      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
-      - LOG_LEVEL=${LOG_LEVEL}
+      - AUTH_SERVICE_URL=http://auth-service:${AUTH_SERVICE_PORT}
     ports:
       - "${AI_SERVICE_PORT}:${AI_SERVICE_PORT}"
     depends_on:
-      - mongo
-      - redis
       - auth-service
     networks:
       - quizzer-network
@@ -83,29 +39,19 @@ services:
   # Quiz Service
   quiz-service:
     build:
-      context: ./services/quiz-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/quiz-service/Dockerfile
     container_name: quizzer-quiz
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      - NODE_ENV=${NODE_ENV}
-      - MONGODB_URI=${MONGODB_URI}
-      - REDIS_URL=${REDIS_URL}
-      - AUTH_SERVICE_URL=${AUTH_SERVICE_URL}
-      - AI_SERVICE_URL=${AI_SERVICE_URL}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASS=${SMTP_PASS}
       - PORT=${QUIZ_SERVICE_PORT}
-      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
-      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
-      - LOG_LEVEL=${LOG_LEVEL}
+      - AUTH_SERVICE_URL=http://auth-service:${AUTH_SERVICE_PORT}
+      - AI_SERVICE_URL=http://ai-service:${AI_SERVICE_PORT}
     ports:
       - "${QUIZ_SERVICE_PORT}:${QUIZ_SERVICE_PORT}"
     depends_on:
-      - mongo
-      - redis
       - auth-service
       - ai-service
     networks:
@@ -114,25 +60,19 @@ services:
   # Analytics Service
   analytics-service:
     build:
-      context: ./services/analytics-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/analytics-service/Dockerfile
     container_name: quizzer-analytics
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      - NODE_ENV=${NODE_ENV}
-      - MONGODB_URI=${MONGODB_URI}
-      - REDIS_URL=${REDIS_URL}
-      - AUTH_SERVICE_URL=${AUTH_SERVICE_URL}
-      - QUIZ_SERVICE_URL=${QUIZ_SERVICE_URL}
       - PORT=${ANALYTICS_SERVICE_PORT}
-      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
-      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
-      - LOG_LEVEL=${LOG_LEVEL}
+      - AUTH_SERVICE_URL=http://auth-service:${AUTH_SERVICE_PORT}
+      - QUIZ_SERVICE_URL=http://quiz-service:${QUIZ_SERVICE_PORT}
     ports:
       - "${ANALYTICS_SERVICE_PORT}:${ANALYTICS_SERVICE_PORT}"
     depends_on:
-      - mongo
-      - redis
       - auth-service
       - quiz-service
     networks:
@@ -141,37 +81,27 @@ services:
   # Submission Service
   submission-service:
     build:
-      context: ./services/submission-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/submission-service/Dockerfile
     container_name: quizzer-submission
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      - NODE_ENV=${NODE_ENV}
-      - MONGODB_URI=${MONGODB_URI}
-      - REDIS_URL=${REDIS_URL}
-      - AUTH_SERVICE_URL=${AUTH_SERVICE_URL}
-      - QUIZ_SERVICE_URL=${QUIZ_SERVICE_URL}
-      - AI_SERVICE_URL=${AI_SERVICE_URL}
-      - ANALYTICS_SERVICE_URL=${ANALYTICS_SERVICE_URL}
       - PORT=${SUBMISSION_SERVICE_PORT}
-      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
-      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
-      - LOG_LEVEL=${LOG_LEVEL}
+      - AUTH_SERVICE_URL=http://auth-service:${AUTH_SERVICE_PORT}
+      - QUIZ_SERVICE_URL=http://quiz-service:${QUIZ_SERVICE_PORT}
+      - AI_SERVICE_URL=http://ai-service:${AI_SERVICE_PORT}
+      - ANALYTICS_SERVICE_URL=http://analytics-service:${ANALYTICS_SERVICE_PORT}
     ports:
       - "${SUBMISSION_SERVICE_PORT}:${SUBMISSION_SERVICE_PORT}"
     depends_on:
-      - mongo
-      - redis
       - auth-service
       - quiz-service
       - ai-service
       - analytics-service
     networks:
       - quizzer-network
-
-volumes:
-  mongo_data:
-  redis_data:
 
 networks:
   quizzer-network:

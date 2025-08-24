@@ -4,17 +4,15 @@ FROM node:18-alpine AS builder
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Copy package files from service context
+COPY services/ai-service/package*.json ./
+COPY services/ai-service/tsconfig.json ./
 
-# Install dependencies (including dev dependencies for build)
-RUN npm ci --only=production=false
+# Install all deps for build
+RUN npm ci
 
-# Copy source code
-COPY src/ ./src/
-
-# Build TypeScript to JavaScript
+# Copy source and build
+COPY services/ai-service/src/ ./src/
 RUN npm run build
 
 # Production stage
@@ -24,28 +22,28 @@ FROM node:18-alpine AS production
 RUN apk add --no-cache dumb-init
 
 # Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodeuser -u 1001
+RUN addgroup -g 1001 -S nodejs && adduser -S nodeuser -u 1001
 
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Only production deps
+COPY services/ai-service/package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Install only production dependencies
-RUN npm ci --only=production && npm cache clean --force
-
-# Copy built application from builder stage
+# Copy built app
 COPY --from=builder /app/dist ./dist
 
-# Create logs directory
+# Copy root .env file if it exists
+COPY .env* ./
+
+# Prepare runtime dirs
 RUN mkdir -p logs && chown -R nodeuser:nodejs /app
 
 # Switch to non-root user
 USER nodeuser
 
-# Expose port
+# Correct service port
 EXPOSE 3002
 
 # Health check

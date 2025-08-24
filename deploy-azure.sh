@@ -38,6 +38,10 @@ else
     exit 1
 fi
 
+# Generate unique registry name with timestamp
+TIMESTAMP=$(date +%s)
+AZURE_CONTAINER_REGISTRY="${AZURE_CONTAINER_REGISTRY}${TIMESTAMP}"
+
 # Check if Azure CLI is installed
 if ! command -v az &> /dev/null; then
     print_error "Azure CLI is not installed. Please install it first."
@@ -49,6 +53,45 @@ if ! command -v docker &> /dev/null; then
     print_error "Docker is not installed. Please install it first."
     exit 1
 fi
+
+# Function to generate unique ACR name if needed
+generate_unique_acr_name() {
+    local base_name="$1"
+    local timestamp=$(date +%s)
+    local random_suffix=$(openssl rand -hex 3)
+
+    # Try original name first
+    if az acr check-name --name "$base_name" --query "nameAvailable" --output tsv 2>/dev/null | grep -q "true"; then
+        echo "$base_name"
+        return
+    fi
+
+    # Try with username prefix
+    local username=$(whoami)
+    local user_name="${username}-${base_name}"
+    if [ ${#user_name} -le 50 ] && az acr check-name --name "$user_name" --query "nameAvailable" --output tsv 2>/dev/null | grep -q "true"; then
+        echo "$user_name"
+        return
+    fi
+
+    # Try with random suffix
+    local random_name="${base_name}-${random_suffix}"
+    if [ ${#random_name} -le 50 ] && az acr check-name --name "$random_name" --query "nameAvailable" --output tsv 2>/dev/null | grep -q "true"; then
+        echo "$random_name"
+        return
+    fi
+
+    # Final fallback with timestamp
+    local final_name="${base_name}-${timestamp}"
+    if [ ${#final_name} -le 50 ]; then
+        echo "$final_name"
+    else
+        # Truncate base name to fit
+        local max_base_len=$((50 - ${#timestamp} - 1))
+        local truncated_base="${base_name:0:$max_base_len}"
+        echo "${truncated_base}-${timestamp}"
+    fi
+}
 
 # Function to check if user is logged in to Azure
 check_azure_login() {
@@ -74,6 +117,16 @@ create_resource_group() {
 # Function to create Azure Container Registry
 create_container_registry() {
     print_status "Creating Azure Container Registry: $AZURE_CONTAINER_REGISTRY"
+
+    # Check if registry name is available
+    AVAILABLE=$(az acr check-name --name $AZURE_CONTAINER_REGISTRY --query "nameAvailable" --output tsv)
+
+    if [ "$AVAILABLE" != "true" ]; then
+        print_warning "Registry name $AZURE_CONTAINER_REGISTRY is not available. Generating new name..."
+        AZURE_CONTAINER_REGISTRY="quizzer${RANDOM}${TIMESTAMP}"
+        print_status "Using registry name: $AZURE_CONTAINER_REGISTRY"
+    fi
+
     az acr create \
         --resource-group $AZURE_RESOURCE_GROUP \
         --name $AZURE_CONTAINER_REGISTRY \
@@ -81,7 +134,7 @@ create_container_registry() {
         --admin-enabled true \
         --location $AZURE_LOCATION \
         --output table
-    print_success "Container Registry created/updated"
+    print_success "Container Registry created/updated: $AZURE_CONTAINER_REGISTRY"
 }
 
 # Function to create Container App Environment
@@ -93,56 +146,6 @@ create_container_app_environment() {
         --location $AZURE_LOCATION \
         --output table
     print_success "Container App Environment created/updated"
-}
-
-# Function to create Azure Cosmos DB (MongoDB API)
-create_cosmos_db() {
-    print_status "Creating Azure Cosmos DB with MongoDB API"
-    az cosmosdb create \
-        --name "quizzer-cosmos-db" \
-        --resource-group $AZURE_RESOURCE_GROUP \
-        --kind MongoDB \
-        --locations regionName=$AZURE_LOCATION \
-        --default-consistency-level Session \
-        --enable-automatic-failover true \
-        --output table
-
-    # Get connection string
-    MONGODB_CONNECTION_STRING=$(az cosmosdb keys list \
-        --name "quizzer-cosmos-db" \
-        --resource-group $AZURE_RESOURCE_GROUP \
-        --type connection-strings \
-        --query "connectionStrings[0].connectionString" \
-        --output tsv)
-
-    print_success "Cosmos DB created. Connection string retrieved."
-}
-
-# Function to create Azure Cache for Redis
-create_redis_cache() {
-    print_status "Creating Azure Cache for Redis"
-    az redis create \
-        --name "quizzer-redis-cache" \
-        --resource-group $AZURE_RESOURCE_GROUP \
-        --location $AZURE_LOCATION \
-        --sku Basic \
-        --vm-size c0 \
-        --output table
-
-    # Get Redis connection details
-    REDIS_HOSTNAME=$(az redis show \
-        --name "quizzer-redis-cache" \
-        --resource-group $AZURE_RESOURCE_GROUP \
-        --query "hostName" \
-        --output tsv)
-
-    REDIS_ACCESS_KEY=$(az redis list-keys \
-        --name "quizzer-redis-cache" \
-        --resource-group $AZURE_RESOURCE_GROUP \
-        --query "primaryKey" \
-        --output tsv)
-
-    print_success "Redis Cache created. Connection details retrieved."
 }
 
 # Function to build and push Docker images
@@ -159,14 +162,62 @@ build_and_push_images() {
     services=("auth-service" "ai-service" "quiz-service" "analytics-service" "submission-service")
 
     for service in "${services[@]}"; do
+        if [ ! -d "./services/$service" ]; then
+            print_warning "Service directory ./services/$service not found, skipping..."
+            continue
+        fi
+
         print_status "Building $service..."
-        docker build -t $ACR_LOGIN_SERVER/$service:latest ./services/$service/
-
-        print_status "Pushing $service to ACR..."
-        docker push $ACR_LOGIN_SERVER/$service:latest
-
-        print_success "$service built and pushed successfully"
+        if docker build -t $ACR_LOGIN_SERVER/$service:latest ./services/$service/; then
+            print_status "Pushing $service to ACR..."
+            if docker push $ACR_LOGIN_SERVER/$service:latest; then
+                print_success "$service built and pushed successfully"
+            else
+                print_error "Failed to push $service"
+                exit 1
+            fi
+        else
+            print_error "Failed to build $service"
+            exit 1
+        fi
     done
+}
+
+# Function to deploy or update container app
+deploy_container_app() {
+    local app_name="$1"
+    local image="$2"
+    local port="$3"
+    local env_vars="$4"
+
+    print_status "Deploying/updating $app_name..."
+
+    # Check if app exists
+    if az containerapp show --name "$app_name" --resource-group $AZURE_RESOURCE_GROUP &> /dev/null; then
+        print_status "Updating existing container app: $app_name"
+        az containerapp update \
+            --name "$app_name" \
+            --resource-group $AZURE_RESOURCE_GROUP \
+            --image "$image" \
+            --set-env-vars $env_vars
+    else
+        print_status "Creating new container app: $app_name"
+        az containerapp create \
+            --name "$app_name" \
+            --resource-group $AZURE_RESOURCE_GROUP \
+            --environment $AZURE_CONTAINER_APP_ENV \
+            --image "$image" \
+            --target-port $port \
+            --ingress external \
+            --registry-server $ACR_LOGIN_SERVER \
+            --registry-username $ACR_USERNAME \
+            --registry-password $ACR_PASSWORD \
+            --env-vars $env_vars \
+            --cpu 0.5 \
+            --memory 1Gi \
+            --min-replicas 1 \
+            --max-replicas 10
+    fi
 }
 
 # Function to deploy container apps
@@ -191,13 +242,16 @@ deploy_container_apps() {
         --registry-username $ACR_USERNAME \
         --registry-password $ACR_PASSWORD \
         --env-vars \
-            NODE_ENV=production \
-            MONGODB_URI="$MONGODB_CONNECTION_STRING" \
-            REDIS_URL="rediss://:$REDIS_ACCESS_KEY@$REDIS_HOSTNAME:6380" \
+            NODE_ENV="$NODE_ENV" \
+            MONGODB_URI="$MONGODB_URI" \
+            REDIS_URL="$REDIS_URL" \
             JWT_SECRET="$JWT_SECRET" \
             JWT_EXPIRES_IN="$JWT_EXPIRES_IN" \
             JWT_REFRESH_EXPIRES_IN="$JWT_REFRESH_EXPIRES_IN" \
             PORT=3001 \
+            RATE_LIMIT_WINDOW_MS="$RATE_LIMIT_WINDOW_MS" \
+            RATE_LIMIT_MAX_REQUESTS="$RATE_LIMIT_MAX_REQUESTS" \
+            LOG_LEVEL="$LOG_LEVEL" \
         --cpu 0.5 \
         --memory 1Gi \
         --min-replicas 1 \
@@ -220,13 +274,16 @@ deploy_container_apps() {
         --registry-username $ACR_USERNAME \
         --registry-password $ACR_PASSWORD \
         --env-vars \
-            NODE_ENV=production \
-            MONGODB_URI="$MONGODB_CONNECTION_STRING" \
-            REDIS_URL="rediss://:$REDIS_ACCESS_KEY@$REDIS_HOSTNAME:6380" \
+            NODE_ENV="$NODE_ENV" \
+            MONGODB_URI="$MONGODB_URI" \
+            REDIS_URL="$REDIS_URL" \
             GEMINI_API_KEY="$GEMINI_API_KEY" \
             GROQ_API_KEY="$GROQ_API_KEY" \
             AUTH_SERVICE_URL="$AUTH_SERVICE_URL" \
             PORT=3002 \
+            RATE_LIMIT_WINDOW_MS="$RATE_LIMIT_WINDOW_MS" \
+            RATE_LIMIT_MAX_REQUESTS="$RATE_LIMIT_MAX_REQUESTS" \
+            LOG_LEVEL="$LOG_LEVEL" \
         --cpu 0.5 \
         --memory 1Gi \
         --min-replicas 1 \
@@ -249,9 +306,9 @@ deploy_container_apps() {
         --registry-username $ACR_USERNAME \
         --registry-password $ACR_PASSWORD \
         --env-vars \
-            NODE_ENV=production \
-            MONGODB_URI="$MONGODB_CONNECTION_STRING" \
-            REDIS_URL="rediss://:$REDIS_ACCESS_KEY@$REDIS_HOSTNAME:6380" \
+            NODE_ENV="$NODE_ENV" \
+            MONGODB_URI="$MONGODB_URI" \
+            REDIS_URL="$REDIS_URL" \
             AUTH_SERVICE_URL="$AUTH_SERVICE_URL" \
             AI_SERVICE_URL="$AI_SERVICE_URL" \
             SMTP_HOST="$SMTP_HOST" \
@@ -259,6 +316,9 @@ deploy_container_apps() {
             SMTP_USER="$SMTP_USER" \
             SMTP_PASS="$SMTP_PASS" \
             PORT=3003 \
+            RATE_LIMIT_WINDOW_MS="$RATE_LIMIT_WINDOW_MS" \
+            RATE_LIMIT_MAX_REQUESTS="$RATE_LIMIT_MAX_REQUESTS" \
+            LOG_LEVEL="$LOG_LEVEL" \
         --cpu 0.5 \
         --memory 1Gi \
         --min-replicas 1 \
@@ -281,12 +341,15 @@ deploy_container_apps() {
         --registry-username $ACR_USERNAME \
         --registry-password $ACR_PASSWORD \
         --env-vars \
-            NODE_ENV=production \
-            MONGODB_URI="$MONGODB_CONNECTION_STRING" \
-            REDIS_URL="rediss://:$REDIS_ACCESS_KEY@$REDIS_HOSTNAME:6380" \
+            NODE_ENV="$NODE_ENV" \
+            MONGODB_URI="$MONGODB_URI" \
+            REDIS_URL="$REDIS_URL" \
             AUTH_SERVICE_URL="$AUTH_SERVICE_URL" \
             QUIZ_SERVICE_URL="$QUIZ_SERVICE_URL" \
             PORT=3004 \
+            RATE_LIMIT_WINDOW_MS="$RATE_LIMIT_WINDOW_MS" \
+            RATE_LIMIT_MAX_REQUESTS="$RATE_LIMIT_MAX_REQUESTS" \
+            LOG_LEVEL="$LOG_LEVEL" \
         --cpu 0.5 \
         --memory 1Gi \
         --min-replicas 1 \
@@ -309,14 +372,17 @@ deploy_container_apps() {
         --registry-username $ACR_USERNAME \
         --registry-password $ACR_PASSWORD \
         --env-vars \
-            NODE_ENV=production \
-            MONGODB_URI="$MONGODB_CONNECTION_STRING" \
-            REDIS_URL="rediss://:$REDIS_ACCESS_KEY@$REDIS_HOSTNAME:6380" \
+            NODE_ENV="$NODE_ENV" \
+            MONGODB_URI="$MONGODB_URI" \
+            REDIS_URL="$REDIS_URL" \
             AUTH_SERVICE_URL="$AUTH_SERVICE_URL" \
             QUIZ_SERVICE_URL="$QUIZ_SERVICE_URL" \
             AI_SERVICE_URL="$AI_SERVICE_URL" \
             ANALYTICS_SERVICE_URL="$ANALYTICS_SERVICE_URL" \
             PORT=3005 \
+            RATE_LIMIT_WINDOW_MS="$RATE_LIMIT_WINDOW_MS" \
+            RATE_LIMIT_MAX_REQUESTS="$RATE_LIMIT_MAX_REQUESTS" \
+            LOG_LEVEL="$LOG_LEVEL" \
         --cpu 0.5 \
         --memory 1Gi \
         --min-replicas 1 \
@@ -341,7 +407,25 @@ deploy_container_apps() {
 # Function to show deployment status
 show_status() {
     print_status "Checking deployment status..."
-    az containerapp list --resource-group $AZURE_RESOURCE_GROUP --output table
+    echo ""
+    echo "=== Resource Group ==="
+    az group show --name $AZURE_RESOURCE_GROUP --output table 2>/dev/null || echo "Resource group not found"
+
+    echo ""
+    echo "=== Container Apps ==="
+    az containerapp list --resource-group $AZURE_RESOURCE_GROUP --output table 2>/dev/null || echo "No container apps found"
+
+    echo ""
+    echo "=== Container Registry ==="
+    az acr list --resource-group $AZURE_RESOURCE_GROUP --output table 2>/dev/null || echo "No container registries found"
+
+    echo ""
+    echo "=== Cosmos DB ==="
+    az cosmosdb list --resource-group $AZURE_RESOURCE_GROUP --output table 2>/dev/null || echo "No Cosmos DB accounts found"
+
+    echo ""
+    echo "=== Redis Cache ==="
+    az redis list --resource-group $AZURE_RESOURCE_GROUP --output table 2>/dev/null || echo "No Redis caches found"
 }
 
 # Main deployment function
@@ -351,12 +435,10 @@ main() {
     # Check prerequisites
     check_azure_login
 
-    # Create Azure resources
+    # Create Azure resources (removed database creation)
     create_resource_group
     create_container_registry
     create_container_app_environment
-    create_cosmos_db
-    create_redis_cache
 
     # Build and deploy
     build_and_push_images

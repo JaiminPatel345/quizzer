@@ -4,15 +4,15 @@ FROM node:18-alpine AS builder
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Copy package files for submission service
+COPY services/submission-service/package*.json ./
+COPY services/submission-service/tsconfig.json ./
 
-# Install dependencies (including dev dependencies for build)
-RUN npm ci --only=production=false
+# Install all dependencies (including dev dependencies for build)
+RUN npm ci
 
-# Copy source code
-COPY src/ ./src/
+# Copy source code for submission service
+COPY services/submission-service/src/ ./src/
 
 # Build TypeScript to JavaScript
 RUN npm run build
@@ -31,13 +31,16 @@ RUN addgroup -g 1001 -S nodejs && \
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY services/submission-service/package*.json ./
 
 # Install only production dependencies
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
+
+# Copy root .env file if it exists
+COPY .env* ./
 
 # Create logs directory
 RUN mkdir -p logs && chown -R nodeuser:nodejs /app

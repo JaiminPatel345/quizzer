@@ -46,7 +46,7 @@ build_services() {
 # Function to start services
 start_services() {
     print_status "Starting all services..."
-    docker-compose up -d
+    docker compose up -d
     print_success "All services started!"
 
     # Wait a moment for services to start
