@@ -175,7 +175,7 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
       aiEvaluated: !!aiEvaluationData
     });
 
-    // FIXED: Return complete submission data with all context
+    // Return clean submission data without redundancy
     res.status(201).json({
       success: true,
       message: 'Quiz submitted successfully',
@@ -197,21 +197,6 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
           _id: quiz._id,
           title: quiz.title,
           metadata: quiz.metadata
-        },
-        results: {
-          score: scoring.scorePercentage,
-          grade: scoring.grade,
-          correctAnswers: scoring.correctAnswers,
-          totalQuestions: scoring.totalQuestions,
-          totalTimeSpent: timing.totalTimeSpent,
-          suggestions: aiEvaluationData?.suggestions || [],
-          strengths: aiEvaluationData?.strengths || [],
-          weaknesses: aiEvaluationData?.weaknesses || [],
-          aiModel: aiEvaluationData?.model || null,
-        },
-        analytics: {
-          updated: true,
-          message: 'Performance data updated automatically'
         }
       }
     });

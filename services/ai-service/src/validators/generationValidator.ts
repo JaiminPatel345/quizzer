@@ -172,7 +172,8 @@ export const adaptiveQuestionsSchema = {
       grade: Joi.number().integer().min(1).max(12).required(),
       subject: Joi.string().trim().min(2).max(100).required(),
       totalQuestions: Joi.number().integer().min(1).max(50).required(),
-      topics: Joi.array().items(Joi.string().trim().max(100)).optional()
+      topics: Joi.array().items(Joi.string().trim().max(100)).optional(),
+      difficulty: Joi.string().valid('easy', 'medium', 'hard', 'mixed').optional()
     }).required(),
 
     userPerformanceData: Joi.object({
@@ -180,7 +181,9 @@ export const adaptiveQuestionsSchema = {
       totalQuizzes: Joi.number().integer().min(0).required(),
       strongSubjects: Joi.array().items(Joi.string()).optional(),
       weakSubjects: Joi.array().items(Joi.string()).optional(),
-      recentPerformance: Joi.array().optional()
+      recentPerformance: Joi.array().optional(),
+      subjectPerformance: Joi.object().optional(),
+      difficultyPerformance: Joi.object().optional()
     }).required()
   })
 };

@@ -50,6 +50,15 @@ router.get('/:quizId',
     getQuizById,
 );
 
+// generate quiz using ai : Client route
+router.post('/generate',
+    authenticateToken,
+    quizLimiter,
+    validateRequest(createAIQuizSchema),
+    createAIGeneratedQuiz,
+);
+
+
 // Protected routes : internal route
 router.post('/',
     authenticateToken,
@@ -92,14 +101,6 @@ router.put('/:quizId/question/:questionId/hints',
     quizLimiter,
     validateRequest(updateQuestionHintsSchema),
     updateQuestionHints,
-);
-
-// generate quiz using ai : Client route
-router.post('/generate',
-    authenticateToken,
-    quizLimiter,
-    validateRequest(createAIQuizSchema),
-    createAIGeneratedQuiz,
 );
 
 router.post('/:quizId/submit',

@@ -453,7 +453,45 @@ export const createAIGeneratedQuiz = async (
       title, description, generationParams, metadata, isPublic = false,
     } = req.body;
 
-    //  endpoint based on adaptiveGeneration flag
+    let aiPayload = generationParams;
+
+    // If adaptive generation is requested, fetch user performance data internally
+    if (generationParams.adaptiveGeneration) {
+      try {
+        const { UserPerformanceService } = await import('../services/userPerformanceService.js');
+        const userPerformanceData = await UserPerformanceService.fetchUserPerformanceData(
+          req.userId!,
+          generationParams.subject,
+          req.headers.authorization as string
+        );
+
+        aiPayload = {
+          baseParams: {
+            grade: generationParams.grade,
+            subject: generationParams.subject,
+            totalQuestions: generationParams.totalQuestions,
+            topics: generationParams.topics,
+            difficulty: generationParams.difficulty,
+          },
+          userPerformanceData,
+        };
+
+        logger.info('Fetched user performance data for adaptive generation:', {
+          userId: req.userId,
+          subject: generationParams.subject,
+          averageScore: userPerformanceData.averageScore,
+          totalQuizzes: userPerformanceData.totalQuizzes
+        });
+      } catch (performanceError) {
+        logger.warn('Failed to fetch user performance data, using standard generation:', performanceError);
+        // Fall back to standard generation if performance data fetch fails
+        aiPayload = {
+          ...generationParams,
+          adaptiveGeneration: false
+        };
+      }
+    }
+
     const endpoint = generationParams.adaptiveGeneration
         ? '/api/ai/generate/adaptive'
         : '/api/ai/generate/questions';
@@ -461,14 +499,7 @@ export const createAIGeneratedQuiz = async (
     const aiServiceClient = getAIServiceClient();
     const questionsResponse = await aiServiceClient.post<{
       success: boolean; data: { questions: QuizQuestion[]; metadata: any; };
-    }>(endpoint, generationParams.adaptiveGeneration ? {
-      baseParams: {
-        grade: generationParams.grade,
-        subject: generationParams.subject,
-        totalQuestions: generationParams.totalQuestions,
-        topics: generationParams.topics,
-      }, userPerformanceData: generationParams.userPerformanceData,
-    } : generationParams, {
+    }>(endpoint, aiPayload, {
       headers: {Authorization: req.headers.authorization as string},
     });
 
@@ -776,9 +807,9 @@ export const submitQuiz = async (
             quizTitle: submissionData.quiz.title,
             score: submissionData.submission.scoring.scorePercentage,
             grade: submissionData.submission.scoring.grade,
-            suggestions: submissionData.results.suggestions,
-            strengths: submissionData.results.strengths,
-            weaknesses: submissionData.results.weaknesses,
+            suggestions: submissionData.submission.aiEvaluation?.suggestions || [],
+            strengths: submissionData.submission.aiEvaluation?.strengths || [],
+            weaknesses: submissionData.submission.aiEvaluation?.weaknesses || [],
           });
         } catch (emailError) {
           logger.warn('Failed to send analytics email:', emailError);
@@ -789,17 +820,59 @@ export const submitQuiz = async (
         success: true, 
         message: 'Quiz submitted successfully', 
         data: {
-          ...submissionData, 
-          emailSent: sendAnalyticsToEmail,
-          // Highlight improvement suggestions prominently
-          improvementTips: {
-            count: submissionData.results.suggestions?.length || 0,
-            tips: submissionData.results.suggestions || [],
-            message: submissionData.results.suggestions?.length > 0 
-              ? "Based on your answers, here are specific areas to focus on for improvement:"
-              : "Great job! Keep practicing to maintain your performance level."
+          submission: {
+            _id: submissionData.submission._id,
+            quizId: submissionData.submission.quizId,
+            attemptNumber: submissionData.submission.attemptNumber,
+            isCompleted: submissionData.submission.isCompleted,
+            createdAt: submissionData.submission.createdAt
+          },
+          quiz: {
+            _id: submissionData.quiz._id,
+            title: submissionData.quiz.title,
+            metadata: {
+              grade: submissionData.quiz.metadata.grade,
+              subject: submissionData.quiz.metadata.subject,
+              totalQuestions: submissionData.quiz.metadata.totalQuestions,
+              timeLimit: submissionData.quiz.metadata.timeLimit,
+              difficulty: submissionData.quiz.metadata.difficulty
+            }
+          },
+          performance: {
+            score: {
+              percentage: submissionData.submission.scoring.scorePercentage,
+              grade: submissionData.submission.scoring.grade,
+              correctAnswers: submissionData.submission.scoring.correctAnswers,
+              totalQuestions: submissionData.submission.scoring.totalQuestions,
+              totalPoints: submissionData.submission.scoring.totalPoints
+            },
+            timing: {
+              totalTimeSpent: submissionData.submission.timing.totalTimeSpent,
+              startedAt: submissionData.submission.timing.startedAt,
+              submittedAt: submissionData.submission.timing.submittedAt
+            }
+          },
+          aiAnalysis: submissionData.submission.aiEvaluation ? {
+            model: submissionData.submission.aiEvaluation.model,
+            evaluatedAt: submissionData.submission.aiEvaluation.evaluatedAt,
+            feedback: {
+              suggestions: submissionData.submission.aiEvaluation.suggestions || [],
+              strengths: submissionData.submission.aiEvaluation.strengths || [],
+              weaknesses: submissionData.submission.aiEvaluation.weaknesses || []
+            }
+          } : null,
+          metadata: {
+            analytics: {
+              updated: true,
+              message: "Performance data updated automatically"
+            },
+            emailSent: sendAnalyticsToEmail,
+            deviceInfo: {
+              type: submissionData.submission.metadata?.deviceType || 'unknown',
+              userAgent: submissionData.submission.metadata?.userAgent || 'unknown'
+            }
           }
-        },
+        }
       });
 
     } catch (submissionError) {

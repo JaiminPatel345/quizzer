@@ -335,24 +335,12 @@ export const createAIQuizSchema = {
     generationParams: Joi.object({
       grade: Joi.number().integer().min(1).max(12).required(),
       subject: Joi.string().trim().min(2).max(100).required(),
-      difficulty: Joi.string().valid('easy', 'medium', 'hard', 'mixed').required(),
-      totalQuestions: Joi.number().integer().min(1).max(50).required(),
+      difficulty: Joi.string().valid('easy', 'medium', 'hard', 'mixed').default('mixed'),
+      totalQuestions: Joi.number().integer().min(1).max(50).default(10),
       topics: Joi.array().items(Joi.string().trim().max(100)).optional(),
 
       // NEW: Adaptive generation flag
-      adaptiveGeneration: Joi.boolean().default(false),
-
-      // NEW: User performance data for adaptive generation
-      userPerformanceData: Joi.when('adaptiveGeneration', {
-        is: true,
-        then: Joi.object({
-          averageScore: Joi.number().min(0).max(100).required(),
-          totalQuizzes: Joi.number().integer().min(0).required(),
-          strongSubjects: Joi.array().items(Joi.string()).optional(),
-          weakSubjects: Joi.array().items(Joi.string()).optional()
-        }).required(),
-        otherwise: Joi.optional()
-      })
+      adaptiveGeneration: Joi.boolean().default(false)
     }).required(),
 
     metadata: Joi.object({

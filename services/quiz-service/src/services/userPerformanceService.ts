@@ -127,22 +127,13 @@ export class UserPerformanceService {
         headers: { Authorization: authHeader }
       });
 
-      let subjectResponse = null;
-      try {
-        // Try to get subject-specific performance
-        subjectResponse = await analyticsServiceClient.get<{
-          success: boolean;
-          data: any;
-        }>(`/api/analytics/performance/${encodeURIComponent(subject)}/all`, {
-          headers: { Authorization: authHeader }
-        });
-      } catch (subjectError) {
-        logger.debug('Subject-specific analytics not available:', { subject });
-      }
-
+      // Note: Subject-specific performance would require a grade parameter
+      // For now, we'll rely on overall performance and process submissions
+      // to extract subject-specific data
+      
       return {
         overall: overallResponse.success ? overallResponse.data : null,
-        subject: subjectResponse?.success ? subjectResponse.data : null
+        subject: null // Will be calculated from submissions
       };
     } catch (error) {
       logger.warn('Failed to fetch analytics data:', error);
