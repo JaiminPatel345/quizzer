@@ -12,7 +12,7 @@ import AuthServiceApp from './app.js';
 import { connectDatabase } from './config/database.js';
 import { logger } from './utils/logger.js';
 
-const PORT = process.env.AUTH_SERVICE_PORT || 3001;
+const PORT = Number(process.env.PORT) || Number(process.env.AUTH_SERVICE_PORT) || 3001;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 async function startServer(): Promise<void> {

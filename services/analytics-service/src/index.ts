@@ -12,7 +12,7 @@ import { connectDatabase } from './config/database.js';
 import { logger } from './utils/logger.js';
 import mongoose from 'mongoose';
 
-const PORT = process.env.ANALYTICS_SERVICE_PORT || 3005;
+const PORT = Number(process.env.PORT) || Number(process.env.ANALYTICS_SERVICE_PORT) || 3004;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 async function startServer(): Promise<void> {
