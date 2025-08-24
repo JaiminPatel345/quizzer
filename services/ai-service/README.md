@@ -1,9 +1,18 @@
-# AI Service API Documentation
+# AI Service API Documentation - Live on Azure! 🚀
 
-**Base URL**: `http://localhost:3003`  
-**Port**: 3003  
+## 🌐 Live Service URL
+**Base URL**: http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002
+**Health Check**: http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002/health
+
+**Port**: 3002  
 **Authentication**: Bearer token required for all endpoints  
 **Dependencies**: Auth Service for authentication, Groq API, Gemini API
+
+## 🧪 Quick Test
+```bash
+# Test the live service
+curl http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002/health
+```
 
 ---
 

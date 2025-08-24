@@ -1,8 +1,20 @@
-# AI Quizzer
+# AI Quizzer - Live on Azure! 🚀
 
 A scalable microservices-based quiz platform with AI-powered question generation, intelligent scoring, adaptive difficulty, quiz retry functionality, and comprehensive analytics with leaderboards.
 
-you can also see docs on https://jaiminpatel345.github.io/docs
+**🌐 LIVE DEPLOYMENT:** All services are now running on Azure Container Instances!
+
+You can also see docs on https://jaiminpatel345.github.io/docs
+
+## 🌐 Live Service URLs
+
+| Service | Live URL | Health Check |
+|---------|----------|--------------|
+| 🔐 **Auth Service** | http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001 | [Health](http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001/health) |
+| 🤖 **AI Service** | http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002 | [Health](http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002/health) |
+| 📝 **Quiz Service** | http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003 | [Health](http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003/health) |
+| 📋 **Submission Service** | http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004 | [Health](http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/health) |
+| 📊 **Analytics Service** | http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005 | [Health](http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/health) |
 
 ## 📋 Table of Contents
 
@@ -20,9 +32,9 @@ you can also see docs on https://jaiminpatel345.github.io/docs
 ## 🏗️ Architecture Overview
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌───────────────────┐
+┌─────────────────┐    ┌───────��─────────┐    ┌────────────��──────┐
 │   Auth Service  │    │   Quiz Service  │    │   AI Service      │
-│     Port 3001   │    │     Port 3002   │    │     Port 3003     │
+│  Azure Live ✅  │    │  Azure Live ✅  │    │  Azure Live ✅    │
 │                 │    │                 │    │                   │ 
 │ • Authentication│    │ • Quiz CRUD     │    │ • Question Gen    │
 │ • User Profile  │    │ • Content Mgmt  │    │ • AI Evaluation   │
@@ -32,7 +44,7 @@ you can also see docs on https://jaiminpatel345.github.io/docs
 
 ┌──────────────────┐    ┌─────────────────┐    
 │Submission Svc    │    │Analytics Service│    
-│   Port 3004      │    │    Port 3005    │    
+│  Azure Live ✅   │    │  Azure Live ✅  │    
 │                  │    │                 │    
 │ • Quiz Scoring   │    │ • Performance   │    
 │ • Smart Grading  │    │ • Leaderboards  │    
@@ -44,13 +56,43 @@ you can also see docs on https://jaiminpatel345.github.io/docs
 
 ## 📊 Services Overview
 
-| Service                  | Port | Database                | Purpose                                     | Status     |
-|--------------------------|------|-------------------------|---------------------------------------------|------------|
-| **Auth Service**         | 3001 | `quiz_auth_db`          | User authentication & profile management    | ✅ Active   |
-| **Quiz Service**         | 3002 | `quiz_content_db`       | Quiz content management & CRUD operations   | ✅ Active   |
-| **AI Service**           | 3003 | `quiz_ai_db`            | AI-powered question generation & evaluation | ✅ Active   |
-| **Submission Service**   | 3004 | `quiz_submissions_db`   | Quiz submission & intelligent scoring       | ✅ Active   |
-| **Analytics Service**    | 3005 | `quiz_analytics_db`     | Performance analytics & leaderboards        | ✅ Active   |
+| Service                  | Live URL | Database                | Purpose                                     | Status     |
+|--------------------------|----------|-------------------------|---------------------------------------------|------------|
+| **Auth Service**         | [Live](http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001) | MongoDB Atlas          | User authentication & profile management    | ✅ Live   |
+| **Quiz Service**         | [Live](http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003) | MongoDB Atlas          | Quiz content management & CRUD operations   | ✅ Live   |
+| **AI Service**           | [Live](http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002) | MongoDB Atlas          | AI-powered question generation & evaluation | ✅ Live   |
+| **Submission Service**   | [Live](http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004) | MongoDB Atlas | Quiz submission & scoring system | ✅ Live |
+| **Analytics Service**    | [Live](http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005) | MongoDB Atlas | Performance analytics & leaderboards | ✅ Live |
+
+## 🧪 Quick Test Commands
+
+Test all services with these commands:
+
+```bash
+# Test Auth Service
+curl http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001/health
+
+# Test AI Service  
+curl http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002/health
+
+# Test Quiz Service
+curl http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003/health
+
+# Test Submission Service
+curl http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/health
+
+# Test Analytics Service
+curl http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/health
+```
+
+## 🚀 Deployment Status
+
+- **Platform:** Azure Container Instances
+- **Registry:** Azure Container Registry (quizzerregistry1756067615.azurecr.io)
+- **Database:** MongoDB Atlas (Online)
+- **Cache:** Redis Cloud (Online)
+- **Status:** 🟢 All services running
+- **Cost:** ~$5-10/month (Azure for Students)
 
 ---
 

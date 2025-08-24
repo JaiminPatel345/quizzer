@@ -1,15 +1,22 @@
-# Auth Service
+# Auth Service - Live on Azure! 🚀
 
 Authentication and user management service for the AI Quizzer platform.
 
-## Base URL
-`http://localhost:3001`
+## 🌐 Live Service URL
+**Base URL**: http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001
+**Health Check**: http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001/health
 
 ## Database
-`quiz_auth_db`
+MongoDB Atlas (Online)
 
 ## Purpose
 User authentication, registration, profile management, and JWT token handling.
+
+## 🧪 Quick Test
+```bash
+# Test the live service
+curl http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001/health
+```
 
 ---
 
@@ -399,11 +406,12 @@ Example ( with correct credentials ):
       "updatedAt": "2025-08-23T17:08:39.866Z",
       "lastLoginAt": "2025-08-23T17:08:39.865Z"
     },
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGE5ZjJkMTdhMDcxZTFlNzFjYTU5NjYiLCJ1c2VybmFtZSI6ImphaW1pbjEyMyIsImVtYWlsIjoiamFpbWlucGF0ZWwwMzA0MjAwNUBnbWFpbC5jb20iLCJpYXQiOjE3NTU5Njg5MTksImV4cCI6MTc1NjU3MzcxOX0.GrAWx5Be6f5-4F5dyH_lHAqpv6_p0Fn5Nvo3vcOXvpw",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1.......",
     "expiresIn": "7d"
   }
 }
 ```
+save **your** token and put into headers if auth error came while checking
 
 ### Register User
 **POST** `/api/auth/register`  
@@ -670,5 +678,3 @@ When rate limit is exceeded:
   }
 }
 ```
-
---

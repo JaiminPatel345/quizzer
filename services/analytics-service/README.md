@@ -1,9 +1,18 @@
-# Analytics Service API Documentation
+# Analytics Service API Documentation - Live on Azure! 🚀
 
-**Base URL**: `http://localhost:3005`  
+## 🌐 Live Service URL
+**Base URL**: http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005
+**Health Check**: http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/health
+
 **Port**: 3005  
 **Authentication**: Bearer token required for protected endpoints  
 **Dependencies**: Auth Service for authentication, Submission Service for data
+
+## 🧪 Quick Test
+```bash
+# Test the live service
+curl http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/health
+```
 
 ---
 

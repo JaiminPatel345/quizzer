@@ -1,9 +1,18 @@
-# Quiz Service API Documentation
+http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003# Quiz Service API Documentation - Live on Azure! 🚀
 
-**Base URL**: `http://localhost:3002`  
-**Port**: 3002  
+## 🌐 Live Service URL
+**Base URL**: http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003
+**Health Check**: http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003/health
+
+**Port**: 3003  
 **Authentication**: Bearer token required for protected endpoints  
 **Dependencies**: Auth Service for authentication
+
+## 🧪 Quick Test
+```bash
+# Test the live service
+curl http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003/health
+```
 
 ---
 

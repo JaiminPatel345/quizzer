@@ -1,11 +1,18 @@
-# Submission Service API Documentation
+# Submission Service API Documentation - Live on Azure! 🚀
 
-**Base URL**: `http://localhost:3004`  
+## 🌐 Live Service URL
+**Base URL**: http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004
+**Health Check**: http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/health
+
 **Port**: 3004  
 **Authentication**: Bearer token required for all endpoints  
 **Dependencies**: Auth Service for authentication, Quiz Service, AI Service
 
-**Status**: Ready for CI/CD deployment
+## 🧪 Quick Test
+```bash
+# Test the live service
+curl http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/health
+```
 
 ---
 

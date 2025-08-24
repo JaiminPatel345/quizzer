@@ -1,29 +1,49 @@
-# AI-Powered Quiz Application - API Flow Documentation
+# AI-Powered Quiz Application - API Flow Documentation 🚀
+
+## 🌐 Live Deployment Status
+**All services are now LIVE on Azure Container Instances!**
+
+## Live Service URLs
+
+| Service | Live URL | Health Check |
+|---------|----------|--------------|
+| 🔐 **Auth Service** | http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001 | [Health](http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001/health) |
+| 🤖 **AI Service** | http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002 | [Health](http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002/health) |
+| 📝 **Quiz Service** | http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003 | [Health](http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003/health) |
+| 📋 **Submission Service** | http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004 | [Health](http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/health) |
+| 📊 **Analytics Service** | http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005 | [Health](http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/health) |
 
 ## Overview
-This document details the complete API flows , showing client requests, internal service and communications.
+This document details the complete API flows, showing client requests, internal service communications, and live examples using our Azure deployment.
 
 ## Architecture
-- **Auth Service** (Port 3001): JWT-based authentication
-- **Quiz Service** (Port 3002): Quiz management and orchestration
-- **AI Service** (Port 3003): AI-powered generation, evaluation, and hints
-- **Submission Service** (Port 3004): Quiz submission handling and scoring
-- **Analytics Service** (Port 3005): Performance tracking and leaderboards
+- **Auth Service** (Live): JWT-based authentication
+- **Quiz Service** (Live): Quiz management and orchestration  
+- **AI Service** (Live): AI-powered generation, evaluation, and hints
+- **Submission Service** (Live): Quiz submission handling and scoring
+- **Analytics Service** (Live): Performance tracking and leaderboards
 
 ---
 
 ## 1. Authentication Flow
 
 ### 1.1 User Login
-**Client Request:**
+**Client Request to Live Service:**
 ```http
-POST /api/auth/login
+POST http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001/api/auth/login
 Content-Type: application/json
 
 {
   "username": "testuser",
   "password": "password123"
 }
+```
+
+**Test with curl:**
+```bash
+curl -X POST http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"password123"}'
 ```
 
 **Internal Flow:**
