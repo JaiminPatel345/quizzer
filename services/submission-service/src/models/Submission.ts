@@ -65,7 +65,9 @@ const SubmissionMetadataSchema = new Schema<SubmissionMetadata>({
     type: String,
     enum: ['mobile', 'desktop', 'tablet'],
     required: true
-  }
+  },
+  grade: { type: Number, min: 1, max: 12, required: false },
+  subject: { type: String, trim: true, required: false }
 }, { _id: false });
 
 const SubmissionSchema = new Schema<ISubmission>({

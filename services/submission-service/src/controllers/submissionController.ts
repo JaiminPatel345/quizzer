@@ -15,20 +15,35 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
     const { quizId, answers, startedAt, submittedAt, requestEvaluation = true } = req.body;
     const userId = req.user._id;
 
-    // 1. Fetch quiz from quiz service
-    const quizServiceClient = getQuizServiceClient();
-    const quizResponse = await quizServiceClient.get<{
-      success: boolean;
-      data: { quiz: any };
-    }>(`/api/quiz/${quizId}`, {
-      headers: { Authorization: req.headers.authorization as string}
-    });
-
-    if (!quizResponse.success) {
-      throw new NotFoundError('Quiz not found');
+    // Validate inputs
+    if (!quizId || !/^[0-9a-fA-F]{24}$/.test(quizId)) {
+      throw new BadRequestError('Invalid quiz ID format');
     }
 
-    const quiz = quizResponse.data.quiz;
+    if (!answers || !Array.isArray(answers) || answers.length === 0) {
+      throw new BadRequestError('Answers array is required and must not be empty');
+    }
+
+    // 1. Fetch quiz from quiz service
+    let quiz;
+    try {
+      const quizServiceClient = getQuizServiceClient();
+      const quizResponse = await quizServiceClient.get<{
+        success: boolean;
+        data: { quiz: any };
+      }>(`/api/quiz/${quizId}`, {
+        headers: { Authorization: req.headers.authorization as string}
+      });
+
+      if (!quizResponse.success || !quizResponse.data.quiz) {
+        throw new NotFoundError('Quiz not found');
+      }
+
+      quiz = quizResponse.data.quiz;
+    } catch (quizError) {
+      logger.error('Failed to fetch quiz:', { quizId, error: quizError });
+      throw new NotFoundError('Quiz not found or service unavailable');
+    }
 
     // 2. Calculate scores using scoring service
     const evaluatedAnswers = ScoringService.calculateScore(quiz.questions, answers);
@@ -68,7 +83,9 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
       metadata: {
         ipAddress: req.ip || 'Unknown',
         userAgent,
-        deviceType
+        deviceType,
+        grade: quiz.metadata?.grade,
+        subject: quiz.metadata?.subject
       },
       isCompleted: true
     });
@@ -88,7 +105,7 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
             };
             metadata: {
               model: 'groq' | 'gemini';
-              processingTime: number;
+              processingTime?: number;
             };
           };
         }>('/api/ai/evaluate/submission', {
@@ -98,19 +115,24 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
           headers: { Authorization: req.headers.authorization as string }
         });
 
-        if (evaluationResponse.success) {
+        if (evaluationResponse.success && evaluationResponse.data?.evaluation) {
           aiEvaluationData = {
             model: evaluationResponse.data.metadata.model,
-            suggestions: evaluationResponse.data.evaluation.suggestions,
-            strengths: evaluationResponse.data.evaluation.strengths,
-            weaknesses: evaluationResponse.data.evaluation.weaknesses,
+            suggestions: evaluationResponse.data.evaluation.suggestions || [],
+            strengths: evaluationResponse.data.evaluation.strengths || [],
+            weaknesses: evaluationResponse.data.evaluation.weaknesses || [],
             evaluatedAt: new Date(),
-            // processingTime: evaluationResponse.data.metadata.processingTime
           };
           submission.aiEvaluation = aiEvaluationData;
+        } else {
+          logger.warn('AI evaluation response was invalid:', evaluationResponse);
         }
       } catch (aiError) {
-        logger.warn('AI evaluation failed:', aiError);
+        logger.warn('AI evaluation failed:', {
+          error: aiError,
+          quizId,
+          userId
+        });
       }
     }
 
@@ -233,6 +255,8 @@ export const getUserSubmissions = async (req: AuthRequest, res: Response): Promi
 
     const {
       quizId,
+      grade,
+      subject,
       minScore,
       maxScore,
       from,
@@ -250,6 +274,12 @@ export const getUserSubmissions = async (req: AuthRequest, res: Response): Promi
 
     if (quizId) filter.quizId = quizId;
 
+    if (grade) filter['metadata.grade'] = parseInt(grade as string);
+
+    if (subject) {
+      filter['metadata.subject'] = { $regex: new RegExp(subject as string, 'i') };
+    }
+
     if (minScore || maxScore) {
       filter['scoring.scorePercentage'] = {};
       if (minScore) filter['scoring.scorePercentage'].$gte = parseFloat(minScore as string);
@@ -258,8 +288,20 @@ export const getUserSubmissions = async (req: AuthRequest, res: Response): Promi
 
     if (from || to) {
       filter['timing.submittedAt'] = {};
-      if (from) filter['timing.submittedAt'].$gte = new Date(from as string);
-      if (to) filter['timing.submittedAt'].$lte = new Date(to as string);
+      if (from) {
+        try {
+          filter['timing.submittedAt'].$gte = new Date(from as string);
+        } catch (dateError) {
+          throw new BadRequestError('Invalid from date format');
+        }
+      }
+      if (to) {
+        try {
+          filter['timing.submittedAt'].$lte = new Date(to as string);
+        } catch (dateError) {
+          throw new BadRequestError('Invalid to date format');
+        }
+      }
     }
 
     // Build sort
@@ -286,7 +328,8 @@ export const getUserSubmissions = async (req: AuthRequest, res: Response): Promi
     logger.info('User submissions retrieved:', {
       userId,
       count: submissions.length,
-      total
+      total,
+      filters: { quizId, grade, subject, minScore, maxScore, from, to }
     });
 
     res.status(200).json({

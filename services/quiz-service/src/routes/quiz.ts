@@ -10,6 +10,7 @@ import {
   submitQuiz,
   updateQuestionHints,
   updateQuiz,
+  getQuizHistory,
 } from '../controllers/quizController.js';
 import {authenticateToken} from '../middleware/auth.js';
 import {quizLimiter} from '../middleware/rateLimiter.js';
@@ -28,7 +29,10 @@ import {
 } from '../validators/hintValidator.js';
 import {
   submitQuizSchema,
-} from 'submission-service/dist/validators/submissionValidator.js';
+} from '../validators/submissionValidator.js';
+import {
+  getQuizHistorySchema,
+} from '../validators/historyValidator.js';
 
 const router = Router();
 
@@ -105,6 +109,14 @@ router.post('/:quizId/submit',
     quizLimiter,
     validateRequest(submitQuizSchema),
     submitQuiz,
+);
+
+// Get quiz history with filters
+router.get('/history',
+    authenticateToken,
+    quizLimiter,
+    validateRequest(getQuizHistorySchema),
+    getQuizHistory,
 );
 
 export default router;

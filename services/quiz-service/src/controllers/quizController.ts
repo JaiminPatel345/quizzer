@@ -712,67 +712,210 @@ export const submitQuiz = async (
       sendAnalyticsToEmail = false,
     } = req.body;
 
-    // Call submission service
-    const submissionServiceClient = getSubmissionServiceClient();
-    const submissionResponse = await submissionServiceClient.post<SubmissionResponse>(
-        '/api/submission/submit',
-        {
-          quizId, answers, startedAt, submittedAt, requestEvaluation,
-        },
-        {
-          headers: {Authorization: req.headers.authorization as string},
-        },
-    );
-
-    if (!submissionResponse.success) {
-      throw new Error('Failed to submit quiz to submission service');
+    // Validate quiz ID format
+    if (!quizId || !/^[0-9a-fA-F]{24}$/.test(quizId)) {
+      throw new BadRequestError('Invalid quiz ID format');
     }
 
-    const submissionData = submissionResponse.data;
+    // Validate required fields
+    if (!answers || !Array.isArray(answers) || answers.length === 0) {
+      throw new BadRequestError('Answers array is required and must not be empty');
+    }
 
-    // Update analytics
+    if (!startedAt) {
+      throw new BadRequestError('Start time is required');
+    }
+
+    // Call submission service with proper error handling
     try {
-      const analyticsServiceClient = getAnalyticsServiceClient();
-      await analyticsServiceClient.post('/api/analytics/performance/update', {
-        subject: submissionData.quiz.metadata.subject,
-        grade: submissionData.quiz.metadata.grade,
-        submissionData: {
-          quizId: submissionData.submission.quizId,
-          scoring: submissionData.submission.scoring,
-          timing: submissionData.submission.timing,
-          answers: submissionData.submission.answers,
-        },
-      }, {
-        headers: {Authorization: req.headers.authorization as string},
-      });
-    } catch (analyticsError) {
-      logger.warn('Analytics update failed:', analyticsError);
-    }
+      const submissionServiceClient = getSubmissionServiceClient();
+      const submissionResponse = await submissionServiceClient.post<SubmissionResponse>(
+          '/api/submission/submit',
+          {
+            quizId, answers, startedAt, submittedAt, requestEvaluation,
+          },
+          {
+            headers: {Authorization: req.headers.authorization as string},
+          },
+      );
 
-    // Send email if requested
-    if (sendAnalyticsToEmail && req.user.email) {
-      try {
-        await sendAnalyticsEmail(req.user.email, {
-          username: req.user.username,
-          quizTitle: submissionData.quiz.title,
-          score: submissionData.submission.scoring.scorePercentage,
-          grade: submissionData.submission.scoring.grade,
-          suggestions: submissionData.results.suggestions,
-          strengths: submissionData.results.strengths,
-          weaknesses: submissionData.results.weaknesses,
-        });
-      } catch (emailError) {
-        logger.warn('Failed to send analytics email:', emailError);
+      if (!submissionResponse.success || !submissionResponse.data) {
+        throw new Error('Invalid response from submission service');
       }
-    }
 
-    res.status(201).json({
-      success: true, message: 'Quiz submitted successfully', data: {
-        ...submissionData, emailSent: sendAnalyticsToEmail,
-      },
-    });
+      const submissionData = submissionResponse.data;
+
+      // Update analytics
+      try {
+        const analyticsServiceClient = getAnalyticsServiceClient();
+        await analyticsServiceClient.post('/api/analytics/performance/update', {
+          subject: submissionData.quiz.metadata.subject,
+          grade: submissionData.quiz.metadata.grade,
+          submissionData: {
+            quizId: submissionData.submission.quizId,
+            scoring: submissionData.submission.scoring,
+            timing: submissionData.submission.timing,
+            answers: submissionData.submission.answers,
+          },
+        }, {
+          headers: {Authorization: req.headers.authorization as string},
+        });
+      } catch (analyticsError) {
+        logger.warn('Analytics update failed:', analyticsError);
+      }
+
+      // Send email if requested
+      if (sendAnalyticsToEmail && req.user.email) {
+        try {
+          await sendAnalyticsEmail(req.user.email, {
+            username: req.user.username,
+            quizTitle: submissionData.quiz.title,
+            score: submissionData.submission.scoring.scorePercentage,
+            grade: submissionData.submission.scoring.grade,
+            suggestions: submissionData.results.suggestions,
+            strengths: submissionData.results.strengths,
+            weaknesses: submissionData.results.weaknesses,
+          });
+        } catch (emailError) {
+          logger.warn('Failed to send analytics email:', emailError);
+        }
+      }
+
+      res.status(201).json({
+        success: true, message: 'Quiz submitted successfully', data: {
+          ...submissionData, emailSent: sendAnalyticsToEmail,
+        },
+      });
+
+    } catch (submissionError) {
+      logger.error('Submission service error:', {
+        error: submissionError,
+        quizId,
+        userId: req.userId
+      });
+      throw new Error('Failed to submit quiz. Please try again later.');
+    }
 
   } catch (error) {
     handleError(res, 'submitQuiz', error as Error);
+  }
+};
+
+export const getQuizHistory = async (
+    req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      throw new UnauthorizedError('User not authenticated');
+    }
+
+    const {
+      quizId,
+      grade,
+      subject,
+      minScore,
+      maxScore,
+      from,
+      to,
+      page = 1,
+      limit = 10,
+      sortBy = 'completedDate',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Map sortBy values to submission service fields
+    const sortByMapping: { [key: string]: string } = {
+      'completedDate': 'timing.submittedAt',
+      'score': 'scoring.scorePercentage',
+      'attemptNumber': 'attemptNumber'
+    };
+
+    const mappedSortBy = sortByMapping[sortBy as string] || 'timing.submittedAt';
+
+    // Call submission service to get user submissions with filters
+    try {
+      const submissionServiceClient = getSubmissionServiceClient();
+      const submissionsResponse = await submissionServiceClient.get<{
+        success: boolean;
+        data: {
+          submissions: any[];
+          pagination: any;
+        };
+      }>('/api/submission', {
+        params: {
+          quizId,
+          grade,
+          subject,
+          minScore,
+          maxScore,
+          from,
+          to,
+          page,
+          limit,
+          sortBy: mappedSortBy,
+          sortOrder
+        },
+        headers: { Authorization: req.headers.authorization as string }
+      });
+
+      if (!submissionsResponse.success || !submissionsResponse.data) {
+        throw new Error('Failed to retrieve quiz history from submission service');
+      }
+
+      const { submissions, pagination } = submissionsResponse.data;
+
+      // Transform submissions to quiz history format
+      const quizHistory = submissions.map((submission: any) => ({
+        submissionId: submission._id,
+        quizId: submission.quizId,
+        attemptNumber: submission.attemptNumber,
+        score: submission.scoring.scorePercentage,
+        grade: submission.scoring.grade,
+        totalQuestions: submission.scoring.totalQuestions,
+        correctAnswers: submission.scoring.correctAnswers,
+        completedDate: submission.timing.submittedAt,
+        timeSpent: submission.timing.totalTimeSpent,
+        quizGrade: submission.metadata?.grade,
+        quizSubject: submission.metadata?.subject,
+        hasAIEvaluation: !!submission.aiEvaluation
+      }));
+
+      logger.info('Quiz history retrieved successfully:', {
+        userId: req.userId,
+        count: quizHistory.length,
+        filters: { quizId, grade, subject, minScore, maxScore, from, to }
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Quiz history retrieved successfully',
+        data: {
+          history: quizHistory,
+          pagination,
+          filters: {
+            quizId: quizId || null,
+            grade: grade ? parseInt(grade as string) : null,
+            subject: subject || null,
+            scoreRange: {
+              min: minScore ? parseFloat(minScore as string) : null,
+              max: maxScore ? parseFloat(maxScore as string) : null
+            },
+            dateRange: {
+              from: from ? new Date(from as string) : null,
+              to: to ? new Date(to as string) : null
+            }
+          }
+        }
+      });
+
+    } catch (submissionError) {
+      logger.error('Submission service error for quiz history:', {
+        error: submissionError,
+        userId: req.userId
+      });
+      throw new Error('Failed to retrieve quiz history. Please try again later.');
+    }
+
+  } catch (error) {
+    handleError(res, 'getQuizHistory', error as Error);
   }
 };

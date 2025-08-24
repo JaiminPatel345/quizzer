@@ -47,6 +47,8 @@ export interface SubmissionMetadata {
   ipAddress: string;
   userAgent: string;
   deviceType: 'mobile' | 'desktop' | 'tablet';
+  grade?: number;
+  subject?: string;
 }
 
 export interface QuizQuestion {
