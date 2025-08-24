@@ -5,14 +5,14 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy package files for analytics service
-COPY services/analytics-service/package*.json ./
-COPY services/analytics-service/tsconfig.json ./
+COPY package*.json ./
+COPY tsconfig.json ./
 
 # Install all dependencies (including dev dependencies for build)
 RUN npm ci
 
 # Copy source code for analytics service
-COPY services/analytics-service/src/ ./src/
+COPY src/ ./src/
 
 # Build TypeScript to JavaScript
 RUN npm run build
@@ -31,16 +31,13 @@ RUN addgroup -g 1001 -S nodejs && \
 WORKDIR /app
 
 # Copy package files
-COPY services/analytics-service/package*.json ./
+COPY package*.json ./
 
 # Install only production dependencies
 RUN npm ci --omit=dev && npm cache clean --force
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
-
-# Copy root .env file if it exists
-COPY .env* ./
 
 # Create logs directory
 RUN mkdir -p logs && chown -R nodeuser:nodejs /app

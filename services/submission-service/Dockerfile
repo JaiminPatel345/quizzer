@@ -1,24 +1,24 @@
 # Submission Service Dockerfile - Optimized Multi-stage build
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 # Set working directory
 WORKDIR /app
 
 # Copy package files for submission service
-COPY services/submission-service/package*.json ./
-COPY services/submission-service/tsconfig.json ./
+COPY package*.json ./
+COPY tsconfig.json ./
 
 # Install all dependencies (including dev dependencies for build)
 RUN npm ci
 
 # Copy source code for submission service
-COPY services/submission-service/src/ ./src/
+COPY src/ ./src/
 
 # Build TypeScript to JavaScript
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine AS production
+FROM node:20-alpine AS production
 
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
@@ -31,16 +31,13 @@ RUN addgroup -g 1001 -S nodejs && \
 WORKDIR /app
 
 # Copy package files
-COPY services/submission-service/package*.json ./
+COPY package*.json ./
 
 # Install only production dependencies
 RUN npm ci --omit=dev && npm cache clean --force
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
-
-# Copy root .env file if it exists
-COPY .env* ./
 
 # Create logs directory
 RUN mkdir -p logs && chown -R nodeuser:nodejs /app
@@ -49,11 +46,11 @@ RUN mkdir -p logs && chown -R nodeuser:nodejs /app
 USER nodeuser
 
 # Expose port
-EXPOSE 3005
+EXPOSE 3004
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3005/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+  CMD node -e "require('http').get('http://localhost:3004/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Start the application
 ENTRYPOINT ["dumb-init", "--"]

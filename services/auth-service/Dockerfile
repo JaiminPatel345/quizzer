@@ -4,14 +4,14 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY services/auth-service/package*.json ./
-COPY services/auth-service/tsconfig.json ./
+COPY package*.json ./
+COPY tsconfig.json ./
 
 # Install all deps for build
 RUN npm ci
 
 # Copy source and build
-COPY services/auth-service/src/ ./src/
+COPY src/ ./src/
 RUN npm run build
 
 # Production stage
@@ -26,14 +26,11 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nodeuser -u 1001
 WORKDIR /app
 
 # Only production deps
-COPY services/auth-service/package*.json ./
+COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 # Copy built app
 COPY --from=builder /app/dist ./dist
-
-# Copy root .env file if it exists
-COPY .env* ./
 
 # Prepare runtime dirs
 RUN mkdir -p logs && chown -R nodeuser:nodejs /app
