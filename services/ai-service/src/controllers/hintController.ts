@@ -5,6 +5,8 @@ import { AILog } from '../models/AILog.js';
 import { handleError, BadRequestError, UnauthorizedError } from '../utils/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import type { AuthRequest, QuizQuestion } from '../types/index.js';
+import {getQuizServiceClient} from '../config/serviceClient.js';
+import { NotFoundError } from '../utils/errorHandler.js';
 
 export const generateHint = async (req: AuthRequest, res: Response): Promise<void> => {
   const startTime = Date.now();
@@ -15,20 +17,63 @@ export const generateHint = async (req: AuthRequest, res: Response): Promise<voi
       throw new UnauthorizedError('User not authenticated');
     }
 
-    const { question }: { question: QuizQuestion } = req.body;
+    const { question } = req.body;
+    const { questionId } = question;
 
-    if (!question || !question.questionText) {
-      throw new BadRequestError('Valid question object is required');
+    if (!questionId) {
+      throw new BadRequestError('Question ID is required');
     }
 
-    // Try Groq first, fallback to Gemini
+    // Fetch full question details from Quiz service internally
+    const quizServiceClient = getQuizServiceClient();
+    let fullQuestion: QuizQuestion;
+
+    try {
+      // Find quiz containing this question
+      const quizzesResponse = await quizServiceClient.get<{
+        success: boolean;
+        data: { quizzes: any[] };
+      }>('/api/quiz?limit=100', {
+        headers: { Authorization: req.headers.authorization as string }
+      });
+
+      if (!quizzesResponse.success) {
+        throw new Error('Failed to fetch quizzes');
+      }
+
+      // Find the question across all quizzes
+      let foundQuestion: QuizQuestion | null = null;
+      for (const quiz of quizzesResponse.data.quizzes) {
+        const quizDetail = await quizServiceClient.get<{
+          success: boolean;
+          data: { quiz: any };
+        }>(`/api/quiz/${quiz._id}`, {
+          headers: { Authorization: req.headers.authorization as string }
+        });
+
+        if (quizDetail.success) {
+          foundQuestion = quizDetail.data.quiz.questions.find((q: any) => q.questionId === questionId);
+          if (foundQuestion) break;
+        }
+      }
+
+      if (!foundQuestion) {
+        throw new NotFoundError('Question not found');
+      }
+
+      fullQuestion = foundQuestion;
+    } catch (serviceError) {
+      throw new Error('Failed to fetch question details from Quiz service');
+    }
+
+    // Generate hint using AI (without exposing correct answer)
     let hint;
     let success = false;
     let error;
 
     try {
       const groqService = getGroqService();
-      hint = await groqService.generateHint(question);
+      hint = await groqService.generateHint(fullQuestion);
       aiModel = 'groq';
       success = true;
     } catch (groqError) {
@@ -36,7 +81,7 @@ export const generateHint = async (req: AuthRequest, res: Response): Promise<voi
 
       try {
         const geminiService = getGeminiService();
-        hint = await geminiService.generateHint(question);
+        hint = await geminiService.generateHint(fullQuestion);
         aiModel = 'gemini';
         success = true;
       } catch (geminiError) {
@@ -46,22 +91,19 @@ export const generateHint = async (req: AuthRequest, res: Response): Promise<voi
       }
     }
 
-    const processingTime = Date.now() - startTime;
-
     // Log AI task
     try {
       const aiLog = new AILog({
         userId: req.userId,
         taskType: 'hint',
         inputData: {
-          questionId: question.questionId,
-          questionType: question.questionType,
-          difficulty: question.difficulty,
-          topic: question.topic
+          questionId: fullQuestion.questionId,
+          questionType: fullQuestion.questionType,
+          difficulty: fullQuestion.difficulty,
+          topic: fullQuestion.topic
         },
         outputData: { hint },
         model: aiModel,
-        processingTime,
         success,
         error
       });
@@ -72,9 +114,8 @@ export const generateHint = async (req: AuthRequest, res: Response): Promise<voi
 
     logger.info('Hint generated successfully:', {
       userId: req.userId,
-      questionId: question.questionId,
-      model: aiModel,
-      processingTime
+      questionId: fullQuestion.questionId,
+      model: aiModel
     });
 
     res.status(200).json({
@@ -82,17 +123,14 @@ export const generateHint = async (req: AuthRequest, res: Response): Promise<voi
       message: 'Hint generated successfully',
       data: {
         hint,
-        questionId: question.questionId,
+        questionId: fullQuestion.questionId,
         metadata: {
-          model: aiModel,
-          processingTime
+          model: aiModel
         }
       }
     });
 
   } catch (error) {
-    const processingTime = Date.now() - startTime;
-
     // Log failed AI task
     try {
       const aiLog = new AILog({
@@ -101,7 +139,6 @@ export const generateHint = async (req: AuthRequest, res: Response): Promise<voi
         inputData: req.body,
         outputData: null,
         model: aiModel,
-        processingTime,
         success: false,
         error: (error as Error).message
       });
