@@ -1,5 +1,6 @@
 import Groq from 'groq-sdk';
 import {logger} from '../utils/logger.js';
+import { QuestionTypeNormalizer, ValidQuestionType } from '../utils/questionTypeUtils.js';
 import type {
   EvaluationResult, QuizGenerationParams, QuizQuestion, SubmissionAnswer,
 } from '../types/index.js';
@@ -57,8 +58,8 @@ class GroqService {
       cleaned = cleaned.trim();
 
       // Find JSON start
-      const jsonStart = Math.min(cleaned.indexOf('[') !== -1 ? cleaned.indexOf(
-              '[') : cleaned.length,
+      const jsonStart = Math.min(
+          cleaned.indexOf('[') !== -1 ? cleaned.indexOf('[') : cleaned.length,
           cleaned.indexOf('{') !== -1 ? cleaned.indexOf('{') : cleaned.length,
       );
 
@@ -70,22 +71,31 @@ class GroqService {
       const parsed = JSON.parse(cleaned);
 
       // Handle different response formats
+      let rawQuestions: any[] = [];
       if (Array.isArray(parsed)) {
-        return parsed as QuizQuestion[];
+        rawQuestions = parsed;
       } else if (parsed.questions && Array.isArray(parsed.questions)) {
-        return parsed.questions as QuizQuestion[];
+        rawQuestions = parsed.questions;
       } else if (typeof parsed === 'object') {
         // If it's an object, try to extract array from common keys
         const possibleArrays = ['questions', 'data', 'items', 'quiz'];
         for (const key of possibleArrays) {
           if (parsed[key] && Array.isArray(parsed[key])) {
-            return parsed[key] as QuizQuestion[];
+            rawQuestions = parsed[key];
+            break;
           }
         }
-        throw new Error('Response object does not contain a questions array');
+        if (rawQuestions.length === 0) {
+          throw new Error('Response object does not contain a questions array');
+        }
       }
 
-      throw new Error('Unexpected response format');
+      if (rawQuestions.length === 0) {
+        throw new Error('Unexpected response format');
+      }
+
+      // Normalize question types and return as QuizQuestion[]
+      return QuestionTypeNormalizer.validateAndNormalizeQuestions(rawQuestions) as QuizQuestion[];
 
     } catch (error) {
       logger.error('Failed to parse AI response:', {
@@ -111,12 +121,14 @@ class GroqService {
         messages: [
           {
             role: 'system',
-            content: 'You are an expert education content creator. You MUST respond with ONLY a valid JSON array of quiz questions. Do not include any explanatory text, markdown formatting, or wrapper objects. Return directly the JSON array starting with [ and ending with ].',
+            content: 'You are an expert education content creator. You MUST respond with ONLY a valid JSON array of quiz questions. Do not include any explanatory text, markdown formatting, or wrapper objects. Return directly the JSON array starting with [ and ending with ]. Use EXACTLY these questionType values: "mcq", "true_false", "short_answer". Create ORIGINAL and DIVERSE questions - never repeat the same examples.',
           }, {
             role: 'user', content: prompt,
           },
-        ], model: this.getAvailableModel(), max_completion_tokens: 4000, // Correct parameter name
-        temperature: 0.3,
+        ],
+        model: this.getAvailableModel(),
+        max_completion_tokens: 4000,
+        temperature: 0.1, // Lower temperature for more consistent formatting
       });
 
       const processingTime = Date.now() - startTime;
@@ -225,7 +237,7 @@ class GroqService {
         ],
         model: this.getAvailableModel(),
         max_completion_tokens: 1000,
-        temperature: 0.3,
+        temperature: 0.1, // Lower temperature for consistent JSON
       });
 
       const processingTime = Date.now() - startTime;
@@ -269,30 +281,63 @@ class GroqService {
       difficultyInstruction = `All questions should be ${params.difficulty} level`;
     }
 
-    return `Generate exactly ${params.totalQuestions} quiz questions for Grade ${params.grade} ${params.subject}.
+    const topics = params.topics?.join(', ') || 'curriculum-appropriate topics';
+    const subject = params.subject;
+    const grade = params.grade;
 
-Requirements:
+    return `Generate exactly ${params.totalQuestions} UNIQUE and DIVERSE quiz questions for Grade ${grade} ${subject}.
+
+STRICT REQUIREMENTS:
 - ${difficultyInstruction}
-- Include a mix of question types: multiple choice, true/false, and short answer
-- Each question must have a clear correct answer and explanation
-- Topics to focus on: ${params.topics?.join(', ') || 'curriculum-appropriate topics'}
+- Question types MUST be EXACTLY: "mcq", "true_false", or "short_answer" (use these exact strings only)
+- Create ORIGINAL questions - DO NOT use the example questions shown below
+- Cover diverse topics: ${topics}
+- Each question must test different concepts and knowledge areas
+- Vary the complexity and phrasing to avoid repetitive patterns
+
+QUESTION TYPE RULES:
+- "mcq": Multiple choice with 4 options array
+- "true_false": Boolean question, correctAnswer must be "true" or "false"  
+- "short_answer": Open-ended, no options array needed
 
 CRITICAL: Return ONLY a JSON array starting with [ and ending with ]. No markdown, no explanations, no wrapper objects.
 
-Use this exact format (NO HINTS):
+FORMAT REFERENCE (DO NOT COPY THESE QUESTIONS - THEY ARE JUST FORMAT EXAMPLES):
 [
   {
     "questionId": "q1",
-    "questionText": "What is the main purpose of Java?",
+    "questionText": "Example MCQ question here",
     "questionType": "mcq",
-    "options": ["Web Development", "Mobile Apps", "Enterprise Applications", "All of the above"],
-    "correctAnswer": "All of the above",
-    "explanation": "Java is used for web, mobile, and enterprise development.",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correctAnswer": "Option A",
+    "explanation": "Explanation here",
     "difficulty": "easy",
     "points": 1,
-    "topic": "Java Fundamentals"
+    "topic": "Topic Name"
+  },
+  {
+    "questionId": "q2",
+    "questionText": "Example true/false statement here", 
+    "questionType": "true_false",
+    "correctAnswer": "true",
+    "explanation": "Explanation here",
+    "difficulty": "medium", 
+    "points": 1,
+    "topic": "Topic Name"
+  },
+  {
+    "questionId": "q3",
+    "questionText": "Example short answer question here",
+    "questionType": "short_answer",
+    "correctAnswer": "Expected answer here",
+    "explanation": "Explanation here", 
+    "difficulty": "hard",
+    "points": 2,
+    "topic": "Topic Name"
   }
-]`;
+]
+
+Generate ${params.totalQuestions} ORIGINAL questions now:`;
   }
 
   private buildEvaluationPrompt(
