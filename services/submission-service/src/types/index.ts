@@ -49,6 +49,8 @@ export interface SubmissionMetadata {
   deviceType: 'mobile' | 'desktop' | 'tablet';
   grade?: number;
   subject?: string;
+  isRetry?: boolean;
+  previousAttempt?: ObjectId;
 }
 
 export interface QuizQuestion {

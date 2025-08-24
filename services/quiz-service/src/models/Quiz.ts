@@ -1,5 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import type { QuizMetadata, QuizQuestion, ObjectId } from '../types/index.js';
+import type { QuizMetadata, QuizQuestion, ObjectId, AdaptiveFeatures } from '../types/index.js';
 
 export interface IQuiz extends Document {
   _id: ObjectId;
@@ -14,6 +14,7 @@ export interface IQuiz extends Document {
   isActive: boolean;
   isPublic: boolean;
   version: number;
+  adaptiveFeatures?: AdaptiveFeatures;
 }
 
 const QuizMetadataSchema = new Schema<QuizMetadata>({
@@ -23,11 +24,33 @@ const QuizMetadataSchema = new Schema<QuizMetadata>({
   timeLimit: { type: Number, required: true, min: 5, max: 180 },
   difficulty: {
     type: String,
-    enum: ['easy', 'medium', 'hard', 'mixed'],
+    enum: ['easy', 'medium', 'hard', 'mixed', 'adaptive'],
     required: true
   },
   tags: [{ type: String, trim: true }],
-  category: { type: String, trim: true }
+  category: { type: String, trim: true },
+  adaptiveMetadata: {
+    originalDifficulty: { type: String },
+    difficultyDistribution: {
+      easy: { type: Number },
+      medium: { type: Number },
+      hard: { type: Number }
+    },
+    confidenceLevel: {
+      type: String,
+      enum: ['low', 'medium', 'high']
+    },
+    adaptationFactors: {
+      performanceScore: { type: Number },
+      consistencyScore: { type: Number },
+      improvementTrend: { type: Number },
+      subjectFamiliarity: { type: Number }
+    },
+    performanceBaseline: {
+      averageScore: { type: Number },
+      totalQuizzes: { type: Number }
+    }
+  }
 }, { _id: false });
 
 const QuizQuestionSchema = new Schema<QuizQuestion>({
@@ -73,7 +96,12 @@ const QuizSchema = new Schema<IQuiz>({
   },
   isActive: { type: Boolean, default: true },
   isPublic: { type: Boolean, default: false },
-  version: { type: Number, default: 1, min: 1 }
+  version: { type: Number, default: 1, min: 1 },
+  adaptiveFeatures: {
+    realTimeAdjustment: { type: Boolean, default: false },
+    performanceTracking: { type: Boolean, default: false },
+    difficultyProgression: { type: Boolean, default: false }
+  }
 }, {
   timestamps: true,
   versionKey: false

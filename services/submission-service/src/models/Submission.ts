@@ -67,7 +67,13 @@ const SubmissionMetadataSchema = new Schema<SubmissionMetadata>({
     required: true
   },
   grade: { type: Number, min: 1, max: 12, required: false },
-  subject: { type: String, trim: true, required: false }
+  subject: { type: String, trim: true, required: false },
+  isRetry: { type: Boolean, default: false },
+  previousAttempt: { 
+    type: Schema.Types.ObjectId, 
+    ref: 'Submission', 
+    required: false 
+  }
 }, { _id: false });
 
 const SubmissionSchema = new Schema<ISubmission>({

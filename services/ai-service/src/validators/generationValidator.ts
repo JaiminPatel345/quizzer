@@ -242,3 +242,62 @@ export const generateHintSchema = {
     }).required()
   })
 };
+
+export const realTimeAdjustmentSchema = {
+  body: Joi.object({
+    currentAnswers: Joi.array()
+      .items(
+        Joi.object({
+          questionId: Joi.string().required(),
+          userAnswer: Joi.string().required(),
+          isCorrect: Joi.boolean().required(),
+          pointsEarned: Joi.number().min(0).required(),
+          timeSpent: Joi.number().min(0).required(),
+          hintsUsed: Joi.number().min(0).default(0)
+        })
+      )
+      .min(1)
+      .required()
+      .messages({
+        'array.min': 'At least one answer is required',
+        'any.required': 'Current answers are required'
+      }),
+
+    remainingQuestions: Joi.number()
+      .integer()
+      .min(1)
+      .max(50)
+      .required()
+      .messages({
+        'number.min': 'At least 1 question must remain',
+        'number.max': 'Cannot exceed 50 remaining questions',
+        'any.required': 'Remaining questions count is required'
+      }),
+
+    currentDifficulty: Joi.string()
+      .valid('easy', 'medium', 'hard')
+      .required()
+      .messages({
+        'any.only': 'Current difficulty must be easy, medium, or hard',
+        'any.required': 'Current difficulty is required'
+      }),
+
+    subject: Joi.string()
+      .trim()
+      .min(2)
+      .max(100)
+      .optional()
+      .messages({
+        'string.min': 'Subject must be at least 2 characters long',
+        'string.max': 'Subject cannot exceed 100 characters'
+      }),
+
+    timeRemaining: Joi.number()
+      .integer()
+      .min(0)
+      .optional()
+      .messages({
+        'number.min': 'Time remaining cannot be negative'
+      })
+  })
+};

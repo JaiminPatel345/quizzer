@@ -1034,7 +1034,7 @@ export const getSubmissionSuggestions = async (
         userId: req.userId
       });
       
-      if (submissionError.message?.includes('not found')) {
+      if ((submissionError as any).message?.includes('not found')) {
         throw new NotFoundError('Submission not found');
       }
       
@@ -1137,7 +1137,7 @@ export const getPersonalizedSuggestions = async (
 
       // Get top recurring suggestions
       const topSuggestions = Object.entries(suggestionCounts)
-        .sort(([,a], [,b]) => b - a)
+        .sort(([,a], [,b]) => (b as number) - (a as number))
         .slice(0, 3)
         .map(([suggestion, count]) => ({
           suggestion: allSuggestions.find(s => s.toLowerCase() === suggestion) || suggestion,
@@ -1169,7 +1169,7 @@ export const getPersonalizedSuggestions = async (
             message: "Based on your recent quiz performance, here are the most important areas to focus on:",
             patterns: topSuggestions.map(t => ({
               tip: t.suggestion,
-              appearedIn: `${t.frequency} recent quiz${t.frequency > 1 ? 'es' : ''}`
+              appearedIn: `${(t as any).frequency} recent quiz${(t as any).frequency > 1 ? 'es' : ''}`
             }))
           },
           overallFeedback: {
@@ -1194,5 +1194,238 @@ export const getPersonalizedSuggestions = async (
 
   } catch (error) {
     handleError(res, 'getPersonalizedSuggestions', error as Error);
+  }
+};
+
+/**
+ * Create adaptive quiz with intelligent difficulty distribution based on user performance
+ */
+export const createAdaptiveQuiz = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      throw new UnauthorizedError('User not authenticated');
+    }
+
+    const { grade, subject, totalQuestions, topics, timeLimit, difficulty } = req.body;
+    const userId = req.userId;
+
+    logger.info('Creating adaptive quiz:', {
+      userId,
+      grade,
+      subject,
+      totalQuestions,
+      requestedDifficulty: difficulty
+    });
+
+    // Fetch user performance data for adaptive generation
+    const authHeader = req.get('Authorization') || '';
+    const { UserPerformanceService } = await import('../services/userPerformanceService.js');
+    
+    let performanceData;
+    try {
+      performanceData = await UserPerformanceService.fetchUserPerformanceData(
+        userId!,
+        subject,
+        authHeader
+      );
+    } catch (performanceError) {
+      logger.warn('Failed to fetch performance data, using default distribution:', performanceError);
+      performanceData = {
+        averageScore: 50, // Default to medium performance
+        totalQuizzes: 0
+      };
+    }
+
+    // Call AI service for adaptive question generation
+    const aiClient = getAIServiceClient();
+    
+    const adaptiveQuizData = await aiClient.post('/generation/adaptive', {
+      grade,
+      subject,
+      totalQuestions,
+      topics: topics || [],
+      timeLimit: timeLimit || 30,
+      difficulty: difficulty || 'mixed',
+      performanceData
+    }, {
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!(adaptiveQuizData as any).data?.success) {
+      throw new Error('AI service failed to generate adaptive quiz');
+    }
+
+    const { questions, adaptiveRecommendation } = (adaptiveQuizData as any).data.data;
+
+    // Create quiz with adaptive metadata
+    const quiz = new Quiz({
+      title: `Adaptive ${subject} Quiz - Grade ${grade}`,
+      description: `Personalized quiz adapted to your performance level. ${adaptiveRecommendation?.reasoning?.join(' ') || ''}`,
+      metadata: {
+        grade,
+        subject,
+        totalQuestions,
+        timeLimit: timeLimit || 30,
+        difficulty: 'adaptive',
+        tags: topics || [],
+        category: 'adaptive',
+        adaptiveMetadata: {
+          originalDifficulty: difficulty,
+          difficultyDistribution: adaptiveRecommendation?.difficultyDistribution,
+          confidenceLevel: adaptiveRecommendation?.confidenceLevel,
+          adaptationFactors: adaptiveRecommendation?.adaptationFactors,
+          performanceBaseline: {
+            averageScore: performanceData.averageScore,
+            totalQuizzes: performanceData.totalQuizzes
+          }
+        }
+      },
+      questions: questions.map((q: any, index: number) => ({
+        ...q,
+        questionId: `q_${Date.now()}_${index}`,
+      })),
+      createdBy: userId,
+      isActive: true,
+      isPublic: false,
+      version: 1,
+      adaptiveFeatures: {
+        realTimeAdjustment: true,
+        performanceTracking: true,
+        difficultyProgression: true
+      }
+    });
+
+    await quiz.save();
+
+    // Sanitize questions for client response
+    const sanitizedQuestions = sanitizeQuestionsForClient(quiz.questions);
+
+    logger.info('Adaptive quiz created successfully:', {
+      quizId: quiz._id,
+      userId,
+      difficultyDistribution: adaptiveRecommendation?.difficultyDistribution,
+      confidenceLevel: adaptiveRecommendation?.confidenceLevel
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        quiz: {
+          _id: quiz._id,
+          title: quiz.title,
+          description: quiz.description,
+          metadata: quiz.metadata,
+          questions: sanitizedQuestions,
+          adaptiveInfo: {
+            difficultyDistribution: adaptiveRecommendation?.difficultyDistribution,
+            reasoning: adaptiveRecommendation?.reasoning,
+            confidenceLevel: adaptiveRecommendation?.confidenceLevel,
+            suggestedTopics: adaptiveRecommendation?.suggestedTopics
+          }
+        }
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        isAdaptive: true
+      }
+    });
+
+  } catch (error) {
+    handleError(res, 'createAdaptiveQuiz', error as Error);
+  }
+};
+
+/**
+ * Real-time difficulty adjustment during active quiz session
+ */
+export const adjustQuizDifficultyRealTime = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      throw new UnauthorizedError('User not authenticated');
+    }
+
+    const { 
+      quizId, 
+      currentAnswers, 
+      remainingQuestions, 
+      currentDifficulty, 
+      subject,
+      timeRemaining 
+    } = req.body;
+
+    logger.info('Processing real-time difficulty adjustment:', {
+      userId: req.userId,
+      quizId,
+      answersCount: currentAnswers?.length,
+      remainingQuestions,
+      currentDifficulty
+    });
+
+    // Validate quiz exists and user has access
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      throw new NotFoundError('Quiz not found');
+    }
+
+    // Call AI service for real-time adjustment analysis
+    const authHeader = req.get('Authorization') || '';
+    const aiClient = getAIServiceClient();
+    
+    const adjustmentData = await aiClient.post('/generation/adjust-difficulty', {
+      currentAnswers,
+      remainingQuestions,
+      currentDifficulty,
+      subject: subject || quiz.metadata.subject,
+      timeRemaining
+    }, {
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!(adjustmentData as any).data?.success) {
+      throw new Error('AI service failed to analyze difficulty adjustment');
+    }
+
+    const adjustmentResult = (adjustmentData as any).data.data;
+
+    // Log the adjustment for analytics
+    logger.info('Real-time difficulty adjustment completed:', {
+      userId: req.userId,
+      quizId,
+      adjustment: adjustmentResult.adjustment,
+      sessionMetrics: adjustmentResult.sessionMetrics,
+      recommendations: adjustmentResult.recommendations
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        quizId,
+        adjustment: adjustmentResult.adjustment,
+        currentDifficulty: adjustmentResult.currentDifficulty,
+        recommendedDifficulty: adjustmentResult.recommendedDifficulty,
+        sessionMetrics: adjustmentResult.sessionMetrics,
+        recommendations: adjustmentResult.recommendations,
+        adaptationReason: adjustmentResult.adaptationReason,
+        shouldAdjust: adjustmentResult.adjustment !== 'maintain',
+        nextQuestionGuidance: {
+          difficulty: adjustmentResult.recommendedDifficulty,
+          focusAreas: adjustmentResult.recommendations,
+          confidenceBooster: adjustmentResult.sessionMetrics.correctPercentage >= 70
+        }
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
+        processingTime: (adjustmentData as any).data.meta?.processingTime
+      }
+    });
+
+  } catch (error) {
+    handleError(res, 'adjustQuizDifficultyRealTime', error as Error);
   }
 };

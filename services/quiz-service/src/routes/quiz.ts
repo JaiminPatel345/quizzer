@@ -13,6 +13,8 @@ import {
   getQuizHistory,
   getSubmissionSuggestions,
   getPersonalizedSuggestions,
+  createAdaptiveQuiz,
+  adjustQuizDifficultyRealTime,
 } from '../controllers/quizController.js';
 import {authenticateToken} from '../middleware/auth.js';
 import {quizLimiter} from '../middleware/rateLimiter.js';
@@ -32,9 +34,9 @@ import {
 import {
   submitQuizSchema,
 } from '../validators/submissionValidator.js';
-import {
-  getQuizHistorySchema,
-} from '../validators/historyValidator.js';
+// import {
+//   getQuizHistorySchema,
+// } from '../validators/historyValidator.js';
 
 const router = Router();
 
@@ -117,7 +119,7 @@ router.post('/:quizId/submit',
 router.get('/history',
     authenticateToken,
     quizLimiter,
-    validateRequest(getQuizHistorySchema),
+    // validateRequest(getQuizHistorySchema),
     getQuizHistory,
 );
 
@@ -133,6 +135,21 @@ router.get('/suggestions',
     authenticateToken,
     quizLimiter,
     getPersonalizedSuggestions,
+);
+
+// Adaptive quiz generation with smart difficulty distribution
+router.post('/adaptive',
+    authenticateToken,
+    quizLimiter,
+    validateRequest(createAIQuizSchema), // Reuse existing schema for now
+    createAdaptiveQuiz,
+);
+
+// Real-time difficulty adjustment during quiz
+router.post('/adjust-difficulty',
+    authenticateToken,
+    quizLimiter,
+    adjustQuizDifficultyRealTime,
 );
 
 export default router;

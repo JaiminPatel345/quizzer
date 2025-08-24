@@ -1,6 +1,7 @@
 import type { Response } from 'express';
 import { getGroqService } from '../services/groqService.js';
 import { getGeminiService } from '../services/geminiService.js';
+import { AdaptiveDifficultyService } from '../services/adaptiveDifficultyService.js';
 import { AILog } from '../models/AILog.js';
 import { handleError, BadRequestError, UnauthorizedError } from '../utils/errorHandler.js';
 import { logger } from '../utils/logger.js';
@@ -116,28 +117,38 @@ export const generateAdaptiveQuestions = async (req: AuthRequest, res: Response)
 
     const { baseParams, userPerformanceData } = req.body;
 
-    // Calculate adaptive difficulty distribution based on performance
-    let difficultyDistribution = { easy: 30, medium: 50, hard: 20 };
-
-    if (userPerformanceData?.averageScore !== undefined) {
-      const avgScore = userPerformanceData.averageScore;
-      if (avgScore < 50) {
-        difficultyDistribution = { easy: 60, medium: 30, hard: 10 };
-      } else if (avgScore > 80) {
-        difficultyDistribution = { easy: 10, medium: 40, hard: 50 };
-      } else if (avgScore > 65) {
-        difficultyDistribution = { easy: 20, medium: 50, hard: 30 };
-      }
+    if (!baseParams) {
+      throw new BadRequestError('Base parameters are required for adaptive generation');
     }
+
+    if (!userPerformanceData) {
+      throw new BadRequestError('User performance data is required for adaptive generation');
+    }
+
+    // Use sophisticated adaptive algorithm to determine difficulty distribution
+    const adaptiveRecommendation = AdaptiveDifficultyService.calculateAdaptiveDifficulty(
+      userPerformanceData,
+      baseParams.subject,
+      baseParams.difficulty
+    );
 
     const adaptiveParams: QuizGenerationParams = {
       ...baseParams,
       difficulty: 'mixed' as const,
       adaptiveParams: {
         userPastPerformance: userPerformanceData,
-        difficultyDistribution
+        difficultyDistribution: adaptiveRecommendation.difficultyDistribution
       }
     };
+
+    logger.info('Adaptive difficulty calculated:', {
+      userId: req.userId,
+      subject: baseParams.subject,
+      distribution: adaptiveRecommendation.difficultyDistribution,
+      confidence: adaptiveRecommendation.confidenceLevel,
+      reasoning: adaptiveRecommendation.reasoning,
+      factors: adaptiveRecommendation.adaptationFactors
+    });
 
     // Try Groq first, fallback to Gemini
     let questions;
@@ -166,16 +177,21 @@ export const generateAdaptiveQuestions = async (req: AuthRequest, res: Response)
 
     const processingTime = Date.now() - startTime;
 
-    // Log AI task
+    // Log AI task with adaptive metadata
     try {
       const aiLog = new AILog({
         userId: req.userId,
         taskType: 'generation',
-        inputData: { ...adaptiveParams, isAdaptive: true },
-        outputData: {
-          questionsCount: questions?.length,
-          difficultyDistribution
+        inputData: { 
+          ...adaptiveParams, 
+          isAdaptive: true,
+          adaptiveRecommendation: {
+            distribution: adaptiveRecommendation.difficultyDistribution,
+            confidence: adaptiveRecommendation.confidenceLevel,
+            factors: adaptiveRecommendation.adaptationFactors
+          }
         },
+        outputData: { questionsCount: questions?.length },
         model: aiModel,
         processingTime,
         success,
@@ -191,7 +207,8 @@ export const generateAdaptiveQuestions = async (req: AuthRequest, res: Response)
       questionsCount: questions?.length,
       model: aiModel,
       processingTime,
-      difficultyDistribution
+      distribution: adaptiveRecommendation.difficultyDistribution,
+      confidence: adaptiveRecommendation.confidenceLevel
     });
 
     res.status(200).json({
@@ -203,8 +220,14 @@ export const generateAdaptiveQuestions = async (req: AuthRequest, res: Response)
           model: aiModel,
           processingTime,
           questionsCount: questions?.length,
-          difficultyDistribution,
-          isAdaptive: true
+          adaptiveMetadata: {
+            difficultyDistribution: adaptiveRecommendation.difficultyDistribution,
+            reasoning: adaptiveRecommendation.reasoning,
+            confidenceLevel: adaptiveRecommendation.confidenceLevel,
+            suggestedTopics: adaptiveRecommendation.suggestedTopics,
+            adaptationFactors: adaptiveRecommendation.adaptationFactors,
+            isAdaptive: true
+          }
         }
       }
     });
@@ -230,5 +253,138 @@ export const generateAdaptiveQuestions = async (req: AuthRequest, res: Response)
     }
 
     handleError(res, 'generateAdaptiveQuestions', error as Error);
+  }
+};
+
+export const adjustDifficultyRealTime = async (req: AuthRequest, res: Response): Promise<void> => {
+  const startTime = Date.now();
+
+  try {
+    if (!req.user) {
+      throw new UnauthorizedError('User not authenticated');
+    }
+
+    const { 
+      currentAnswers, 
+      remainingQuestions, 
+      currentDifficulty, 
+      subject, 
+      timeRemaining 
+    } = req.body;
+
+    // Enhanced real-time difficulty adjustment with multiple factors
+    const adjustment = AdaptiveDifficultyService.adjustDifficultyRealTime(
+      currentAnswers, 
+      remainingQuestions
+    );
+
+    // Calculate performance metrics for this session
+    const sessionMetrics = {
+      correctPercentage: (currentAnswers.filter((a: any) => a.isCorrect).length / currentAnswers.length) * 100,
+      averageTimePerQuestion: currentAnswers.reduce((sum: number, a: any) => sum + a.timeSpent, 0) / currentAnswers.length,
+      hintsUsed: currentAnswers.reduce((sum: number, a: any) => sum + a.hintsUsed, 0),
+      totalAnswered: currentAnswers.length
+    };
+
+    // Generate adaptive recommendations based on current performance
+    let recommendedDifficulty = currentDifficulty;
+    const recommendations: string[] = [];
+
+    if (adjustment === 'harder') {
+      if (currentDifficulty === 'easy') {
+        recommendedDifficulty = 'medium';
+      } else if (currentDifficulty === 'medium') {
+        recommendedDifficulty = 'hard';
+      }
+      recommendations.push('Performance is strong - increasing difficulty to maintain engagement');
+    } else if (adjustment === 'easier') {
+      if (currentDifficulty === 'hard') {
+        recommendedDifficulty = 'medium';
+      } else if (currentDifficulty === 'medium') {
+        recommendedDifficulty = 'easy';
+      }
+      recommendations.push('Adjusting difficulty to build confidence and maintain motivation');
+    } else {
+      recommendations.push('Current difficulty level is optimal for learning progression');
+    }
+
+    // Additional contextual recommendations
+    if (sessionMetrics.averageTimePerQuestion > 120) { // 2 minutes per question
+      recommendations.push('Consider allowing more time or reducing complexity');
+    }
+
+    if (sessionMetrics.hintsUsed > currentAnswers.length * 0.5) {
+      recommendations.push('High hint usage detected - consider easier questions or better explanations');
+    }
+
+    const processingTime = Date.now() - startTime;
+
+    // Log the adjustment decision
+    try {
+      const aiLog = new AILog({
+        userId: req.userId,
+        taskType: 'difficulty_adjustment',
+        inputData: {
+          currentAnswers: currentAnswers.length,
+          remainingQuestions,
+          currentDifficulty,
+          subject
+        },
+        outputData: {
+          adjustment,
+          recommendedDifficulty,
+          sessionMetrics,
+          recommendations
+        },
+        model: 'internal',
+        processingTime,
+        success: true,
+        error: null
+      });
+      await aiLog.save();
+    } catch (logError) {
+      logger.error('Failed to log difficulty adjustment:', logError);
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        adjustment,
+        currentDifficulty,
+        recommendedDifficulty,
+        sessionMetrics,
+        recommendations,
+        remainingQuestions,
+        adaptationReason: adjustment === 'maintain' 
+          ? 'Current difficulty is appropriate' 
+          : `Performance indicates need to make questions ${adjustment}`
+      },
+      meta: {
+        processingTime,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    const processingTime = Date.now() - startTime;
+
+    // Log the failure
+    try {
+      const aiLog = new AILog({
+        userId: req.userId,
+        taskType: 'difficulty_adjustment',
+        inputData: req.body,
+        outputData: null,
+        model: 'internal',
+        processingTime,
+        success: false,
+        error: (error as Error).message
+      });
+      await aiLog.save();
+    } catch (logError) {
+      logger.error('Failed to log difficulty adjustment failure:', logError);
+    }
+
+    handleError(res, 'adjustDifficultyRealTime', error as Error);
   }
 };
