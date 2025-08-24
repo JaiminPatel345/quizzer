@@ -103,6 +103,9 @@ GEMINI_API_KEY=your-gemini-api-key
 # 1. Download/UnZip repository which you already done :)
 cd quizzer
 
+#Make each script executable
+chmod +x infrastructure/scripts/*.sh
+
 # 2. Install dependencies for all services
 yarn install --workspaces
 
