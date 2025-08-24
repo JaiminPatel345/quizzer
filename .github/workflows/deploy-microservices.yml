@@ -140,6 +140,11 @@ jobs:
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
             GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
+            AUTH_SERVICE_URL=https://quizzer-auth-service.${{ env.CONTAINER_APP_ENVIRONMENT }}.southindia.azurecontainerapps.io
+            QUIZ_SERVICE_URL=https://quizzer-quiz-service.${{ env.CONTAINER_APP_ENVIRONMENT }}.southindia.azurecontainerapps.io
+            AI_SERVICE_URL=https://quizzer-ai-service.${{ env.CONTAINER_APP_ENVIRONMENT }}.southindia.azurecontainerapps.io
+            ANALYTICS_SERVICE_URL=https://quizzer-analytics-service.${{ env.CONTAINER_APP_ENVIRONMENT }}.southindia.azurecontainerapps.io
+            SUBMISSION_SERVICE_URL=https://quizzer-submission-service.${{ env.CONTAINER_APP_ENVIRONMENT }}.southindia.azurecontainerapps.io
 
   deploy-gateway:
     needs: [detect-changes, build-and-deploy]
@@ -180,17 +185,3 @@ jobs:
           containerAppEnvironment: ${{ env.CONTAINER_APP_ENVIRONMENT }}
           targetPort: 80
           ingress: external
-
-  notification:
-    needs: [build-and-deploy, deploy-gateway]
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Notify deployment status
-        run: |
-          if [ "${{ needs.build-and-deploy.result }}" == "success" ] && [ "${{ needs.deploy-gateway.result }}" == "success" ]; then
-            echo "✅ Deployment completed successfully!"
-          else
-            echo "❌ Deployment failed!"
-            exit 1
-          fi

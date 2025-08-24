@@ -1,0 +1,116 @@
+name: CI/CD Status Check
+
+on:
+  push:
+    branches:
+      - microservices
+      - main
+      - develop
+  workflow_dispatch:
+
+jobs:
+  status-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Environment info
+        run: |
+          echo "🔍 GitHub Actions Environment Check"
+          echo "=================================="
+          echo "Repository: ${{ github.repository }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "Actor: ${{ github.actor }}"
+          echo ""
+
+      - name: Check project structure
+        run: |
+          echo "📁 Project Structure Check"
+          echo "=========================="
+          echo "Root directory:"
+          ls -la
+          echo ""
+          
+          if [ -d "services" ]; then
+            echo "✅ Services directory exists"
+            echo "Services found:"
+            ls -la services/
+          else
+            echo "❌ Services directory not found"
+          fi
+          echo ""
+          
+          if [ -d ".github/workflows" ]; then
+            echo "✅ GitHub workflows directory exists"
+            echo "Workflow files:"
+            ls -la .github/workflows/
+          else
+            echo "❌ GitHub workflows directory not found"
+          fi
+
+      - name: Check for required files
+        run: |
+          echo "📋 Required Files Check"
+          echo "======================"
+          
+          # Check for Dockerfiles
+          echo "Checking for Dockerfiles in services:"
+          for service in auth-service quiz-service ai-service analytics-service submission-service; do
+            if [ -f "services/$service/Dockerfile" ]; then
+              echo "✅ services/$service/Dockerfile exists"
+            else
+              echo "❌ services/$service/Dockerfile missing"
+            fi
+          done
+          echo ""
+          
+          # Check for package.json files
+          echo "Checking for package.json files:"
+          for service in auth-service quiz-service ai-service analytics-service submission-service; do
+            if [ -f "services/$service/package.json" ]; then
+              echo "✅ services/$service/package.json exists"
+            else
+              echo "❌ services/$service/package.json missing"
+            fi
+          done
+
+      - name: Check secrets availability
+        run: |
+          echo "🔐 Secrets Availability Check"
+          echo "============================="
+          
+          # Don't print actual secret values, just check if they exist
+          secrets_check() {
+            local secret_name=$1
+            local secret_value=$2
+            if [ -n "$secret_value" ]; then
+              echo "✅ $secret_name is set"
+            else
+              echo "❌ $secret_name is missing"
+            fi
+          }
+          
+          secrets_check "AZURE_CREDENTIALS" "${{ secrets.AZURE_CREDENTIALS }}"
+          secrets_check "AZURE_SUBSCRIPTION_ID" "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          secrets_check "AZURE_CONTAINER_REGISTRY" "${{ secrets.AZURE_CONTAINER_REGISTRY }}"
+          secrets_check "AZURE_CONTAINER_REGISTRY_NAME" "${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}"
+          secrets_check "AZURE_RESOURCE_GROUP" "${{ secrets.AZURE_RESOURCE_GROUP }}"
+          secrets_check "MONGODB_URI" "${{ secrets.MONGODB_URI }}"
+          secrets_check "JWT_SECRET" "${{ secrets.JWT_SECRET }}"
+          
+      - name: Summary
+        run: |
+          echo "📊 Summary"
+          echo "=========="
+          echo "This workflow is designed to help diagnose CI/CD setup issues."
+          echo ""
+          echo "Next steps:"
+          echo "1. If secrets are missing, run ./get-azure-credentials.sh"
+          echo "2. Add all required secrets to GitHub repository settings"
+          echo "3. Ensure all services have Dockerfile and package.json"
+          echo "4. Test deployment with manual workflow trigger"
+          echo ""
+          echo "✅ Status check completed!"

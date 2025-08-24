@@ -1,0 +1,81 @@
+name: Manual Deploy Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service to deploy (or all)'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - auth-service
+        - quiz-service
+        - ai-service
+        - analytics-service
+        - submission-service
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+jobs:
+  manual-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check secrets
+        run: |
+          echo "🔍 Checking if required secrets are set..."
+          
+          # Check Azure secrets
+          if [ -z "${{ secrets.AZURE_CREDENTIALS }}" ]; then
+            echo "❌ AZURE_CREDENTIALS secret is missing"
+          else
+            echo "✅ AZURE_CREDENTIALS secret is set"
+          fi
+          
+          if [ -z "${{ secrets.AZURE_CONTAINER_REGISTRY }}" ]; then
+            echo "❌ AZURE_CONTAINER_REGISTRY secret is missing"
+          else
+            echo "✅ AZURE_CONTAINER_REGISTRY secret is set: ${{ secrets.AZURE_CONTAINER_REGISTRY }}"
+          fi
+          
+          if [ -z "${{ secrets.AZURE_RESOURCE_GROUP }}" ]; then
+            echo "❌ AZURE_RESOURCE_GROUP secret is missing"
+          else
+            echo "✅ AZURE_RESOURCE_GROUP secret is set: ${{ secrets.AZURE_RESOURCE_GROUP }}"
+          fi
+          
+          echo ""
+          echo "📋 Input parameters:"
+          echo "Service: ${{ github.event.inputs.service }}"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          
+      - name: List project structure
+        run: |
+          echo "📁 Project structure:"
+          ls -la
+          echo ""
+          echo "🔧 Services directory:"
+          ls -la services/ || echo "Services directory not found"
+          echo ""
+          echo "🐳 Checking for Dockerfiles:"
+          find services/ -name "Dockerfile" -type f || echo "No Dockerfiles found"
+
+      - name: Test without deployment
+        run: |
+          echo "🧪 This is a test run - no actual deployment"
+          echo "✅ Workflow is working!"
+          echo ""
+          echo "🚀 To enable full deployment:"
+          echo "1. Set up all required GitHub secrets"
+          echo "2. Run the get-azure-credentials.sh script"
+          echo "3. Make sure Azure resources are created"
