@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - develop
+      - microservices
       - 'feature/*'
     paths:
       - 'services/**'
@@ -13,6 +14,7 @@ on:
   pull_request:
     branches:
       - main
+      - develop
       - develop
 
 env:

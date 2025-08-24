@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - develop
+      - microservices
     paths:
       - 'services/**'
       - 'gateway/**'
