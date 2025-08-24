@@ -41,10 +41,11 @@ import {
 const router = Router();
 
 // Public routes (with optional auth for personalized results)
-router.get('/', quizLimiter, validateRequest(getQuizzesSchema), getQuizzes);
+router.get('/', authenticateToken, quizLimiter, validateRequest(getQuizzesSchema), getQuizzes);
 
 router.get('/:quizId',
     quizLimiter,
+    authenticateToken,
     validateRequest(getQuizByIdSchema),
     getQuizById,
 );
@@ -91,13 +92,6 @@ router.put('/:quizId/question/:questionId/hints',
     quizLimiter,
     validateRequest(updateQuestionHintsSchema),
     updateQuestionHints,
-);
-
-// Update route to use new parameter name
-router.get('/:quizId',
-    quizLimiter,
-    validateRequest(getQuizByIdSchema),
-    getQuizById,
 );
 
 // generate quiz using ai : Client route

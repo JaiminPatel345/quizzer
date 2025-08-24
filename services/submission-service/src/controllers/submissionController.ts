@@ -32,8 +32,11 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
       const quizResponse = await quizServiceClient.get<{
         success: boolean;
         data: { quiz: any };
-      }>(`/api/quiz/${quizId}`, {
-        headers: { Authorization: req.headers.authorization as string}
+      }>(`/api/quiz/${quizId}?internal=true`, {
+        headers: { 
+          Authorization: req.headers.authorization as string,
+          'x-internal-service': 'true'
+        }
       });
 
       if (!quizResponse.success || !quizResponse.data.quiz) {
@@ -156,7 +159,11 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
         headers: { Authorization: req.headers.authorization as string}
       });
     } catch (analyticsError) {
-      logger.warn('Analytics update failed:', analyticsError);
+      logger.warn('Analytics update failed:', {
+        message: (analyticsError as any)?.message || 'Unknown error',
+        status: (analyticsError as any)?.response?.status,
+        data: (analyticsError as any)?.response?.data
+      });
     }
 
     logger.info('Quiz submitted with full integration:', {
@@ -383,8 +390,11 @@ export const getSubmissionDetails = async (req: AuthRequest, res: Response): Pro
           questions: QuizQuestion[];
         };
       };
-    }>(`/api/quiz/${submission.quizId}`, {
-      headers: { Authorization: req.headers.authorization as string }
+    }>(`/api/quiz/${submission.quizId}?internal=true`, {
+      headers: { 
+        Authorization: req.headers.authorization as string,
+        'x-internal-service': 'true'
+      }
     });
 
     let quizDetails = null;
@@ -487,8 +497,11 @@ export const getQuizAttempts = async (req: AuthRequest, res: Response): Promise<
     if (includeDetails === 'true') {
       try {
         const quizServiceClient = getQuizServiceClient();
-        const quizResponse = await quizServiceClient.get(`/api/quiz/${quizId}`, {
-          headers: { Authorization: req.headers.authorization as string }
+        const quizResponse = await quizServiceClient.get(`/api/quiz/${quizId}?internal=true`, {
+          headers: { 
+            Authorization: req.headers.authorization as string,
+            'x-internal-service': 'true'
+          }
         });
         quizDetails = (quizResponse as any).data?.quiz || null;
       } catch (error) {
@@ -602,8 +615,11 @@ export const retryQuiz = async (req: AuthRequest, res: Response): Promise<void> 
     let quiz;
     try {
       const quizServiceClient = getQuizServiceClient();
-      const quizResponse = await quizServiceClient.get(`/api/quiz/${quizId}`, {
-        headers: { Authorization: req.headers.authorization as string }
+      const quizResponse = await quizServiceClient.get(`/api/quiz/${quizId}?internal=true`, {
+        headers: { 
+          Authorization: req.headers.authorization as string,
+          'x-internal-service': 'true'
+        }
       });
 
       if (!(quizResponse as any).data?.quiz) {

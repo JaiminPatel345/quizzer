@@ -11,6 +11,7 @@ import {
 } from '../config/serviceClient.js';
 import {sendAnalyticsEmail} from '../utils/emailUtil.js';
 import {SubmissionResponse} from '../types/submissionTypes.js';
+import mongoose from 'mongoose';
 
 export const createQuiz = async (
     req: AuthRequest, res: Response): Promise<void> => {
@@ -120,13 +121,18 @@ export const getQuizzes = async (req: AuthRequest, res: Response): Promise<void>
       // Note: If completedDate is stored in submissions, this may require a join or separate query
     }
 
-    // Public/private filter
-    if (typeof isPublic !== 'undefined') {
-      filter.isPublic = isPublic === 'true';
-    } else if (!req.user) {
+    // User-based filtering
+    if (!req.user ) {
+      // If not authenticated, only show public quizzes
       filter.isPublic = true;
     } else {
-      filter.$or = [{ isPublic: true }, { createdBy: req.userId }];
+      // If authenticated, show quizzes created by the logged-in user
+      filter.createdBy = new mongoose.Types.ObjectId(req.userId); // Ensure proper ObjectId conversion
+
+      // Apply isPublic filter if specifically provided
+      if (typeof isPublic !== 'undefined') {
+        filter.isPublic = isPublic === 'true';
+      }
     }
 
     // Sort and pagination
@@ -145,7 +151,6 @@ export const getQuizzes = async (req: AuthRequest, res: Response): Promise<void>
         .sort(sortObj)
         .skip(skip)
         .limit(pageSize)
-        .populate('createdBy', 'username')
         .lean();
 
     const total = await Quiz.countDocuments(filter);
@@ -187,26 +192,27 @@ export const getQuizById = async (
     req: AuthRequest, res: Response): Promise<void> => {
   try {
     const {quizId} = req.params;
-    const {includeHints = false, includeAnswers = false} = req.query;
+    const {includeHints = false, includeAnswers = false, internal = false} = req.query;
 
-    const quiz = await Quiz.findById(quizId).populate('createdBy',
-        'username email',
-    ).lean();
+    const quiz = await Quiz.findById(quizId).lean();
 
     if (!quiz) {
       throw new NotFoundError('Quiz');
     }
 
-    // Check access permissions
-    if (!quiz.isPublic && (!req.user || quiz.createdBy._id.toString() !==
+    // Check if this is an internal service request (from submission service, etc.)
+    const isInternalRequest = internal === 'true' || req.headers['x-internal-service'] === 'true';
+    
+    // Check access permissions (skip for internal service requests)
+    if (!isInternalRequest && !quiz.isPublic && (!req.user || quiz.createdBy.toString() !==
         req.userId?.toString())) {
       throw new UnauthorizedError('Access denied to this quiz');
     }
 
-    // Check if user is owner/admin to see answers
-    const isOwner = req.user && quiz.createdBy._id.toString() ===
+    // Check if user is owner/admin to see answers, or if it's an internal request
+    const isOwner = req.user && quiz.createdBy.toString() ===
         req.userId?.toString();
-    const showAnswers = includeAnswers === 'true' && isOwner;
+    const showAnswers = (includeAnswers === 'true' && isOwner) || isInternalRequest;
 
     // ... existing hint generation logic ...
 
@@ -216,6 +222,7 @@ export const getQuizById = async (
       requestedBy: req.userId,
       includeHints,
       showAnswers,
+      isInternalRequest,
     });
 
     // SECURITY: Sanitize questions based on permissions

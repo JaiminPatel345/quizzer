@@ -370,6 +370,8 @@ export const getQuizByIdSchema = {
     quizId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required()
   }),
   query: Joi.object({
-    includeHints: Joi.boolean().default(false)
+    includeHints: Joi.boolean().default(false),
+    includeAnswers: Joi.boolean().default(false),
+    internal: Joi.boolean().default(false)
   })
 };

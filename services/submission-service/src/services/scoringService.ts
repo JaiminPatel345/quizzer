@@ -40,6 +40,10 @@ export class ScoringService {
   }
 
   private static checkAnswer(question: QuizQuestion, userAnswer: string): boolean {
+    if (!question.correctAnswer) {
+      throw new Error(`Question ${question.questionId} is missing correct answer. This indicates an issue with quiz data retrieval.`);
+    }
+    
     const correctAnswer = question.correctAnswer.toLowerCase().trim();
     const userAnswerNormalized = userAnswer.toLowerCase().trim();
 

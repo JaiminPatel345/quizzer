@@ -8,10 +8,13 @@ export const evaluateSubmissionSchema = {
           questionId: Joi.string().required(),
           questionText: Joi.string().required(),
           questionType: Joi.string().valid('mcq', 'true_false', 'short_answer').required(),
-          difficulty: Joi.string().valid('easy', 'medium', 'hard').required(),
+          difficulty: Joi.string().valid('easy', 'medium', 'hard', 'mixed', 'adaptive').required(),
           topic: Joi.string().required(),
           correctAnswer: Joi.string().required(),
-          options: Joi.array().items(Joi.string()).optional()
+          options: Joi.array().items(Joi.string()).optional(),
+          points: Joi.number().min(0).optional(),
+          explanation: Joi.string().optional(),
+          hints: Joi.array().items(Joi.string()).optional()
         })
     )
     .min(1)

@@ -1,21 +1,14 @@
-name: Deploy to Staging
+name: Deploy All Microservices
 
 on:
   push:
     branches:
+      - main
       - develop
       - microservices
-    paths:
-      - 'services/**'
-      - 'gateway/**'
-
-env:
-  AZURE_CONTAINER_REGISTRY: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
-  RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP_STAGING }}
-  CONTAINER_APP_ENVIRONMENT: ${{ secrets.AZURE_CONTAINER_APP_ENVIRONMENT_STAGING }}
 
 jobs:
-  deploy-all-to-staging:
+  deploy:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -56,32 +49,36 @@ jobs:
       - name: Login to Azure Container Registry
         uses: azure/docker-login@v1
         with:
-          login-server: ${{ env.AZURE_CONTAINER_REGISTRY }}
+          login-server: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
           username: ${{ secrets.AZURE_CONTAINER_REGISTRY_USERNAME }}
           password: ${{ secrets.AZURE_CONTAINER_REGISTRY_PASSWORD }}
 
       - name: Build and push Docker image
         run: |
           cd ${{ matrix.service.path }}
-          IMAGE_TAG=${{ env.AZURE_CONTAINER_REGISTRY }}/quizzer-${{ matrix.service.name }}:staging-${{ github.sha }}
+          IMAGE_TAG=${{ secrets.AZURE_CONTAINER_REGISTRY }}/quizzer-${{ matrix.service.name }}:${{ github.sha }}
           docker build -t $IMAGE_TAG .
           docker push $IMAGE_TAG
 
-      - name: Deploy to Azure Container Apps (Staging)
+      - name: Deploy to Azure Container Apps
         uses: azure/container-apps-deploy-action@v1
         with:
           appSourcePath: ${{ matrix.service.path }}
           acrName: ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}
-          containerAppName: quizzer-${{ matrix.service.name }}-staging
-          resourceGroup: ${{ env.RESOURCE_GROUP }}
-          containerAppEnvironment: ${{ env.CONTAINER_APP_ENVIRONMENT }}
+          containerAppName: quizzer-${{ matrix.service.name }}
+          resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
+          containerAppEnvironment: ${{ secrets.AZURE_CONTAINER_APP_ENVIRONMENT }}
           targetPort: ${{ matrix.service.port }}
           ingress: external
           environmentVariables: |
-            NODE_ENV=staging
+            NODE_ENV=production
             PORT=${{ matrix.service.port }}
-            MONGODB_URI=${{ secrets.MONGODB_URI_STAGING }}
-            REDIS_URL=${{ secrets.REDIS_URL_STAGING }}
+            MONGODB_URI=${{ secrets.MONGODB_URI }}
+            REDIS_URL=${{ secrets.REDIS_URL }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
             GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
+
+      - name: Service deployed
+        run: |
+          echo "✅ ${{ matrix.service.name }} deployed successfully!"

@@ -59,7 +59,7 @@
 **Rate Limit**: 50 requests per 15 minutes  
 **Query Parameters**:
 - `grade`: number (1-12, optional)
-- `subject`: string (optional)
+- `subject`: string (optional) 
 - `difficulty`: string (easy|medium|hard|mixed, optional)
 - `category`: string (optional)
 - `tags`: string (comma-separated, optional)
@@ -85,7 +85,7 @@
 
 ```
 
-### Create Quiz
+### Create Quiz ( not for client but for internal service )
 **POST** `/api/quiz`  
 **Authentication**: Required  
 **Rate Limit**: 50 requests per 15 minutes  
@@ -120,11 +120,6 @@
   "template": "string (optional, max 100 chars)",
   "isPublic": "boolean (optional, default: false)"
 }
-```
-
-**Response**:
-```json
-
 ```
 
 ### Update Quiz
@@ -175,16 +170,12 @@
 }
 ```
 
-**Response**:
-```json
-
-```
 
 ---
 
 ## AI-Generated Quiz Endpoints
 
-### Generate AI Quiz
+### Generate AI Quiz ( for client )
 **POST** `/api/quiz/generate`  
 **Authentication**: Required  
 **Rate Limit**: 50 requests per 15 minutes  
@@ -207,11 +198,6 @@
   "questionTypes": ["string array (optional, mcq|true_false|short_answer)"],
   "topics": ["string array (optional, each max 100 chars)"]
 }
-```
-
-**Response**:
-```json
-
 ```
 
 ---
@@ -241,12 +227,7 @@
   "requestEvaluation": "boolean (optional, default: false)"
 }
 ```
-
-**Response**:
-```json
-
-```
-
+---
 ### Generate Hint for Question
 **POST** `/api/quiz/:quizId/question/:questionId/hint`  
 **Authentication**: Required  
@@ -263,10 +244,7 @@
 }
 ```
 
-**Response**:
-```json
-
-```
+---
 
 ### Update Question Hints
 **PUT** `/api/quiz/:quizId/question/:questionId/hints`  
