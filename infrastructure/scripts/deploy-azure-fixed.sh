@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Azure Container Apps Deployment Script for Quizzer Microservices (FREE TIER ONLY)
+# Azure Container Apps Deployment Script for Quizzer Microservices (FREE TIER)
 # This script deploys your microservices to Azure Container Apps using external databases
 
 set -e
@@ -52,21 +52,55 @@ if [ ! -z "$AZURE_SUBSCRIPTION_ID" ]; then
     echo -e "${GREEN}✅ Set subscription to $AZURE_SUBSCRIPTION_ID${NC}"
 fi
 
-# Create resource group
-echo -e "${YELLOW}📦 Creating resource group...${NC}"
-az group create \
-    --name $AZURE_RESOURCE_GROUP \
-    --location $AZURE_LOCATION \
-    --output table
+# Register required resource providers
+echo -e "${YELLOW}📋 Registering required Azure resource providers...${NC}"
 
-# Create Azure Container Registry (FREE TIER)
-echo -e "${YELLOW}🐳 Creating Azure Container Registry (Basic SKU)...${NC}"
-az acr create \
-    --resource-group $AZURE_RESOURCE_GROUP \
-    --name $AZURE_CONTAINER_REGISTRY \
-    --sku Basic \
-    --admin-enabled true \
-    --output table
+providers=("Microsoft.ContainerRegistry" "Microsoft.App" "Microsoft.OperationalInsights")
+for provider in "${providers[@]}"; do
+    status=$(az provider show -n $provider --query "registrationState" -o tsv 2>/dev/null || echo "NotRegistered")
+    if [ "$status" != "Registered" ]; then
+        echo -e "${BLUE}Registering $provider...${NC}"
+        az provider register --namespace $provider
+        
+        # Wait for registration to complete
+        echo -e "${YELLOW}Waiting for $provider to register...${NC}"
+        while [ "$(az provider show -n $provider --query 'registrationState' -o tsv)" != "Registered" ]; do
+            echo "Still registering $provider..."
+            sleep 10
+        done
+        echo -e "${GREEN}✅ $provider registered successfully${NC}"
+    else
+        echo -e "${GREEN}✅ $provider already registered${NC}"
+    fi
+done
+
+# Create resource group
+echo -e "${YELLOW}📦 Checking resource group...${NC}"
+if ! az group show --name $AZURE_RESOURCE_GROUP &> /dev/null; then
+    echo -e "${YELLOW}Creating resource group $AZURE_RESOURCE_GROUP...${NC}"
+    az group create \
+        --name $AZURE_RESOURCE_GROUP \
+        --location $AZURE_LOCATION \
+        --output table
+    echo -e "${GREEN}✅ Resource group created${NC}"
+else
+    echo -e "${GREEN}✅ Resource group $AZURE_RESOURCE_GROUP already exists${NC}"
+fi
+
+# Create Azure Container Registry (FREE TIER) - Check if exists first
+echo -e "${YELLOW}🐳 Checking Azure Container Registry...${NC}"
+if ! az acr show --name $AZURE_CONTAINER_REGISTRY --resource-group $AZURE_RESOURCE_GROUP &> /dev/null; then
+    echo -e "${YELLOW}Creating Azure Container Registry $AZURE_CONTAINER_REGISTRY (Basic SKU)...${NC}"
+    az acr create \
+        --resource-group $AZURE_RESOURCE_GROUP \
+        --name $AZURE_CONTAINER_REGISTRY \
+        --sku Basic \
+        --admin-enabled true \
+        --output table
+    echo -e "${GREEN}✅ Azure Container Registry created${NC}"
+else
+    echo -e "${GREEN}✅ Azure Container Registry $AZURE_CONTAINER_REGISTRY already exists${NC}"
+fi
 
 # Login to ACR
 echo -e "${YELLOW}🔑 Logging into Azure Container Registry...${NC}"
@@ -75,6 +109,10 @@ az acr login --name $AZURE_CONTAINER_REGISTRY
 # Get ACR login server
 ACR_LOGIN_SERVER=$(az acr show --name $AZURE_CONTAINER_REGISTRY --resource-group $AZURE_RESOURCE_GROUP --query loginServer --output tsv)
 echo -e "${GREEN}✅ ACR Login Server: $ACR_LOGIN_SERVER${NC}"
+
+# Get ACR credentials for Container Apps
+ACR_USERNAME=$(az acr credential show --name $AZURE_CONTAINER_REGISTRY --query username --output tsv)
+ACR_PASSWORD=$(az acr credential show --name $AZURE_CONTAINER_REGISTRY --query passwords[0].value --output tsv)
 
 # Build and push Docker images
 echo -e "${YELLOW}🔨 Building and pushing Docker images...${NC}"
@@ -91,6 +129,9 @@ for service in "${services[@]}"; do
         yarn install
         cd "../../"
     fi
+    
+    # Copy .env.production as .env for Docker build to each service directory
+    cp .env.production ./services/$service/.env
     
     # Build Docker image
     docker build -t $ACR_LOGIN_SERVER/quizzer-$service:latest ./services/$service/
@@ -125,27 +166,8 @@ for service in "${services[@]}"; do
         "submission-service") PORT=3005 ;;
     esac
     
-    # Create environment variables based on service needs
-    env_vars="NODE_ENV=production PORT=$PORT MONGO_URI=\"$MONGO_URI\" REDIS_URL=\"$REDIS_URL\" JWT_SECRET=\"$JWT_SECRET\""
-    
-    # Add service-specific environment variables
-    if [ "$service" = "ai-service" ]; then
-        env_vars="$env_vars GEMINI_API_KEY=\"$GEMINI_API_KEY\" GROQ_API_KEY=\"$GROQ_API_KEY\""
-    fi
-    
-    if [ "$service" = "auth-service" ]; then
-        env_vars="$env_vars EMAIL_USER=\"$EMAIL_USER\" EMAIL_PASSWORD=\"$EMAIL_PASSWORD\""
-    fi
-    
-    # Add inter-service communication URLs
-    if [ "$service" = "quiz-service" ] || [ "$service" = "submission-service" ]; then
-        # We'll update these after deployment
-        env_vars="$env_vars AI_SERVICE_URL=http://ai-service:3001"
-    fi
-    
-    if [ "$service" = "submission-service" ]; then
-        env_vars="$env_vars QUIZ_SERVICE_URL=http://quiz-service:3002"
-    fi
+    # Basic environment variables only (sensitive vars will be set via Azure Portal)
+    env_vars="NODE_ENV=production PORT=${PORT}"
     
     az containerapp create \
         --name quizzer-$service \
@@ -159,6 +181,8 @@ for service in "${services[@]}"; do
         --cpu 0.25 \
         --memory 0.5Gi \
         --registry-server $ACR_LOGIN_SERVER \
+        --registry-username $ACR_USERNAME \
+        --registry-password $ACR_PASSWORD \
         --env-vars $env_vars \
         --output table
     

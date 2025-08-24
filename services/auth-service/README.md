@@ -1,53 +1,279 @@
-# Auth Service API Documentation
+# Auth Service
 
-**Base URL**: `http://localhost:3001`  
-**Port**: 3001  
-**Authentication**: Bearer token required for protected endpoints
+Authentication and user management service for the AI Quizzer platform.
 
-## Health & Info Endpoints
+## Base URL
+`http://localhost:3001`
 
-### Service Info
-**GET** `/`  
-**Authentication**: None  
-**Response**:
+## Database
+`quiz_auth_db`
+
+## Purpose
+User authentication, registration, profile management, and JWT token handling.
+
+---
+
+## 🔗 Endpoints
+
+### 1. User Registration
+
+**POST** `/api/auth/register`
+
+**Purpose**: Register a new user account
+
+**Authentication**: Not required
+
+**Rate Limit**: 10 requests per 5 minutes
+
+**Payload**:
 ```json
 {
-  "success": true,
-  "message": "Auth Service API",
-  "version": "1.0.0",
-  "endpoints": {
-    "health": "/health",
-    "auth": "/api/auth"
+  "username": "string (required, 3-30 chars, alphanumeric)",
+  "email": "string (required, valid email format)",
+  "password": "string (required, 6-100 chars)",
+  "profile": {
+    "preferredSubjects": ["array of strings (optional)"]
+  },
+  "preferences": {
+    "emailNotifications": "boolean (optional, default: true)",
+    "difficulty": "string (optional: adaptive|easy|medium|hard, default: adaptive)"
   }
 }
 ```
 
-### Health Check
-**GET** `/health`  
-**Authentication**: None  
 **Response**:
+
+
+---
+
+### 2. User Login
+
+**POST** `/api/auth/login`
+
+**Purpose**: Authenticate user and receive JWT token
+
+**Authentication**: Not required
+
+**Rate Limit**: 10 requests per 5 minutes
+
+**Payload**:
 ```json
 {
-  "success": true,
-  "service": "auth-service",
-  "status": "healthy",
-  "timestamp": "2025-08-23T16:43:16.551Z"
+  "username": "string (required, 3-30 chars)",
+  "password": "string (required, 6-100 chars)"
+}
+```
+
+**Response**:
+
+
+---
+
+### 3. Token Validation
+
+**POST** `/api/auth/validate`
+
+**Purpose**: Validate JWT token and get user info
+
+**Authentication**: Required (Bearer token)
+
+**Rate Limit**: 100 requests per 15 minutes
+
+**Payload**: None (token in Authorization header)
+
+**Headers**:
+```
+Authorization: Bearer <jwt-token>
+```
+
+**Response**:
+
+
+---
+
+### 4. Get User Profile
+
+**GET** `/api/auth/profile`
+
+**Purpose**: Get current user's profile information
+
+**Authentication**: Required (Bearer token)
+
+**Rate Limit**: 100 requests per 15 minutes
+
+**Payload**: None
+
+**Headers**:
+```
+Authorization: Bearer <jwt-token>
+```
+
+**Response**:
+
+
+---
+
+### 5. Update User Profile
+
+**PUT** `/api/auth/profile`
+
+**Purpose**: Update user profile information
+
+**Authentication**: Required (Bearer token)
+
+**Rate Limit**: 50 requests per 15 minutes
+
+**Payload**:
+```json
+{
+  "profile": {
+    "preferredSubjects": ["array of strings (optional)"]
+  },
+  "preferences": {
+    "emailNotifications": "boolean (optional)",
+    "difficulty": "string (optional: adaptive|easy|medium|hard)"
+  }
+}
+```
+
+**Headers**:
+```
+Authorization: Bearer <jwt-token>
+```
+
+**Response**:
+
+
+---
+
+## 🔒 Security Features
+
+### Password Security
+- Minimum 6 characters
+- Hashed using bcrypt with 12 rounds
+- No password stored in plain text
+
+### JWT Tokens
+- Expires in 7 days (configurable)
+- Contains user ID, username, and email
+- Must be included in Authorization header for protected routes
+
+### Rate Limiting
+- Registration/Login: 10 requests per 5 minutes
+- Profile operations: 100 requests per 15 minutes
+- Profile updates: 50 requests per 15 minutes
+
+---
+
+## 🛠️ Environment Variables
+
+```env
+# Required
+JWT_SECRET=your-super-secret-jwt-key
+JWT_EXPIRES_IN=7d
+BCRYPT_ROUNDS=12
+MONGODB_URI=mongodb://localhost:27017/quiz_auth_db
+
+# Optional
+LOG_LEVEL=info
+NODE_ENV=development
+```
+
+---
+
+## 🧪 Testing Examples
+
+### Register New User
+```bash
+curl -X POST http://localhost:3001/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "testuser",
+    "email": "test@example.com",
+    "password": "password123"
+  }'
+```
+
+### Login User
+```bash
+curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "testuser",
+    "password": "password123"
+  }'
+```
+
+### Get Profile (with token)
+```bash
+curl -X GET http://localhost:3001/api/auth/profile \
+  -H "Authorization: Bearer <your-jwt-token>"
+```
+
+### Update Profile
+```bash
+curl -X PUT http://localhost:3001/api/auth/profile \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <your-jwt-token>" \
+  -d '{
+    "preferences": {
+      "emailNotifications": false,
+      "difficulty": "hard"
+    }
+  }'
+```
+
+---
+
+## 📊 User Data Model
+
+```json
+{
+  "_id": "ObjectId",
+  "username": "string",
+  "email": "string", 
+  "password": "string (hashed)",
+  "profile": {
+    "preferredSubjects": ["array of strings"]
+  },
+  "preferences": {
+    "emailNotifications": "boolean",
+    "difficulty": "string"
+  },
+  "performance": {
+    "totalQuizzesTaken": "number",
+    "averageScore": "number", 
+    "strongSubjects": ["array of strings"],
+    "weakSubjects": ["array of strings"]
+  },
+  "lastLoginAt": "Date",
+  "createdAt": "Date",
+  "updatedAt": "Date"
 }
 ```
 
 ---
 
-## Authentication Endpoints
+## ⚠️ Error Responses
 
-### Login (Mock Authentication)
-**POST** `/api/auth/login`  
-**Authentication**: None  
-**Rate Limit**: 10 requests per 15 minutes  
-**Request Body**:
+All errors follow this format:
 ```json
 {
-  "username": "string (required)",
-  "password": "string (required)"
+  "success": false,
+  "error": {
+    "message": "Error description",
+    "timestamp": "ISO date string",
+    "functionName": "Function where error occurred"
+  }
+}
+```
+
+Common HTTP status codes:
+- `400`: Bad Request (validation errors)
+- `401`: Unauthorized (invalid/missing token)
+- `409`: Conflict (username/email already exists)
+- `429`: Too Many Requests (rate limit exceeded)
+- `500`: Internal Server Error
 }
 ```
 Example ( with correct credentials ):

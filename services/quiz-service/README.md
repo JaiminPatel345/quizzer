@@ -6,22 +6,26 @@
 **Dependencies**: Auth Service for authentication
 
 ---
+
+## Table of Contents
+1. [Health & Info Endpoints](#health--info-endpoints)
+2. [Quiz Management Endpoints](#quiz-management-endpoints)
+3. [AI-Generated Quiz Endpoints](#ai-generated-quiz-endpoints)
+4. [Quiz Interaction Endpoints](#quiz-interaction-endpoints)
+5. [History & Analytics Endpoints](#history--analytics-endpoints)
+6. [Adaptive Learning Endpoints](#adaptive-learning-endpoints)
+7. [API Testing Flows](#api-testing-flows)
+
+---
+
 ## Health & Info Endpoints
 
 ### Service Info
 **GET** `/`  
 **Authentication**: None  
-**Response**:
+**Response**: 
 ```json
-{
-    "success": true,
-    "message": "Quiz Service API",
-    "version": "1.0.0",
-    "endpoints": {
-        "health": "/health",
-        "quiz": "/api/quiz"
-    }
-}
+
 ```
 
 ### Health Check
@@ -29,18 +33,14 @@
 **Authentication**: None  
 **Response**:
 ```json
-{
-    "success": true,
-    "service": "quiz-service",
-    "status": "healthy",
-    "timestamp": "2025-08-23T18:13:21.672Z"
-}
+
 ```
+
 ---
 
 ## Quiz Management Endpoints
 
-### Get previously generated Quizzes (List with Filtering)
+### Get Quiz List
 **GET** `/api/quiz`  
 **Authentication**: Optional (affects public/private visibility)  
 **Rate Limit**: 50 requests per 15 minutes  
@@ -55,17 +55,19 @@
 - `limit`: number (default: 10, max: 100)
 - `sortBy`: string (createdAt|title|metadata.grade|metadata.subject, default: createdAt)
 - `sortOrder`: string (asc|desc, default: desc)
-  **Response**:
+
+**Response**:
 ```json
 
 ```
 
 ### Get Quiz by ID
-**GET** `/api/quiz/{quizId}`  
+**GET** `/api/quiz/:quizId`  
 **Authentication**: Optional (required for private quizzes)  
 **Parameters**:
 - `quizId`: string (MongoDB ObjectId, required)
-  **Response**:
+
+**Response**:
 ```json
 
 ```
@@ -106,18 +108,20 @@
   "isPublic": "boolean (optional, default: false)"
 }
 ```
+
 **Response**:
 ```json
 
 ```
 
-### Update Quiz Metadata
-**PUT** `/api/quiz/{quizId}`  
+### Update Quiz
+**PUT** `/api/quiz/:quizId`  
 **Authentication**: Required (must be quiz creator)  
 **Rate Limit**: 50 requests per 15 minutes  
 **Parameters**:
 - `quizId`: string (MongoDB ObjectId, required)
-  **Request Body**:
+
+**Request Body**:
 ```json
 {
   "title": "string (optional, 3-200 chars)",
@@ -126,38 +130,283 @@
   "isPublic": "boolean (optional)"
 }
 ```
+
 **Response**:
 ```json
 
 ```
 
-### Delete Quiz (Soft Delete)
-**DELETE** `/api/quiz/{quizId}`  
+### Delete Quiz
+**DELETE** `/api/quiz/:quizId`  
 **Authentication**: Required (must be quiz creator)  
 **Rate Limit**: 50 requests per 15 minutes  
 **Parameters**:
 - `quizId`: string (MongoDB ObjectId, required)
-  **Response**:
+
+**Response**:
 ```json
 
 ```
 
 ### Duplicate Quiz
-**POST** `/api/quiz/{quizId}/duplicate`  
+**POST** `/api/quiz/:quizId/duplicate`  
 **Authentication**: Required  
 **Rate Limit**: 50 requests per 15 minutes  
 **Parameters**:
 - `quizId`: string (MongoDB ObjectId, required)
-  **Request Body**:
+
+**Request Body**:
 ```json
 {
   "title": "string (optional, 3-200 chars, defaults to 'Original Title (Copy)')"
 }
 ```
+
 **Response**:
 ```json
 
 ```
+
+---
+
+## AI-Generated Quiz Endpoints
+
+### Generate AI Quiz
+**POST** `/api/quiz/generate`  
+**Authentication**: Required  
+**Rate Limit**: 50 requests per 15 minutes  
+**Request Body**:
+```json
+{
+  "title": "string (required, 3-200 chars)",
+  "description": "string (optional, max 1000 chars)",
+  "metadata": {
+    "grade": "number (required, 1-12)",
+    "subject": "string (required, 2-100 chars)",
+    "totalQuestions": "number (required, 1-50)",
+    "timeLimit": "number (required, 5-180 minutes)",
+    "difficulty": "string (required, easy|medium|hard|mixed)",
+    "tags": ["string array (optional, each max 50 chars)"],
+    "category": "string (optional, max 100 chars)"
+  },
+  "template": "string (optional, max 100 chars)",
+  "isPublic": "boolean (optional, default: false)",
+  "questionTypes": ["string array (optional, mcq|true_false|short_answer)"],
+  "topics": ["string array (optional, each max 100 chars)"]
+}
+```
+
+**Response**:
+```json
+
+```
+
+---
+
+## Quiz Interaction Endpoints
+
+### Submit Quiz
+**POST** `/api/quiz/:quizId/submit`  
+**Authentication**: Required  
+**Rate Limit**: 50 requests per 15 minutes  
+**Parameters**:
+- `quizId`: string (MongoDB ObjectId, required)
+
+**Request Body**:
+```json
+{
+  "answers": [
+    {
+      "questionId": "string (required)",
+      "userAnswer": "string (required)",
+      "timeSpent": "number (optional, 0-7200 seconds, default: 0)",
+      "hintsUsed": "number (optional, 0-10, default: 0)"
+    }
+  ],
+  "startedAt": "string (required, ISO date)",
+  "submittedAt": "string (optional, ISO date, default: current time)",
+  "requestEvaluation": "boolean (optional, default: false)"
+}
+```
+
+**Response**:
+```json
+
+```
+
+### Generate Hint for Question
+**POST** `/api/quiz/:quizId/question/:questionId/hint`  
+**Authentication**: Required  
+**Rate Limit**: 50 requests per 15 minutes  
+**Parameters**:
+- `quizId`: string (MongoDB ObjectId, required)
+- `questionId`: string (required)
+
+**Request Body**:
+```json
+{
+  "hintLevel": "number (optional, 1-3, default: 1)",
+  "userAnswer": "string (optional)"
+}
+```
+
+**Response**:
+```json
+
+```
+
+### Update Question Hints
+**PUT** `/api/quiz/:quizId/question/:questionId/hints`  
+**Authentication**: Required (must be quiz creator)  
+**Rate Limit**: 50 requests per 15 minutes  
+**Parameters**:
+- `quizId`: string (MongoDB ObjectId, required)
+- `questionId`: string (required)
+
+**Request Body**:
+```json
+{
+  "hints": ["string array (required, each max 200 chars)"]
+}
+```
+
+**Response**:
+```json
+
+```
+
+---
+
+## History & Analytics Endpoints
+
+### Get Quiz History
+**GET** `/api/quiz/history`  
+**Authentication**: Required  
+**Rate Limit**: 50 requests per 15 minutes  
+**Query Parameters**:
+- `grade`: number (1-12, optional)
+- `subject`: string (optional)
+- `difficulty`: string (easy|medium|hard|mixed, optional)
+- `page`: number (default: 1)
+- `limit`: number (default: 10, max: 100)
+- `sortBy`: string (createdAt|score|timeSpent, default: createdAt)
+- `sortOrder`: string (asc|desc, default: desc)
+
+**Response**:
+```json
+
+```
+
+### Get Submission Suggestions
+**GET** `/api/quiz/submission/:submissionId/suggestions`  
+**Authentication**: Required  
+**Parameters**:
+- `submissionId`: string (MongoDB ObjectId, required)
+
+**Response**:
+```json
+
+```
+
+### Get Personalized Suggestions
+**GET** `/api/quiz/suggestions`  
+**Authentication**: Required  
+
+**Response**:
+```json
+
+```
+
+---
+
+## Adaptive Learning Endpoints
+
+### Create Adaptive Quiz
+**POST** `/api/quiz/adaptive`  
+**Authentication**: Required  
+**Rate Limit**: 50 requests per 15 minutes  
+**Request Body**:
+```json
+{
+  "title": "string (required, 3-200 chars)",
+  "description": "string (optional, max 1000 chars)",
+  "metadata": {
+    "grade": "number (required, 1-12)",
+    "subject": "string (required, 2-100 chars)",
+    "totalQuestions": "number (required, 1-50)",
+    "timeLimit": "number (required, 5-180 minutes)",
+    "difficulty": "string (required, easy|medium|hard|mixed)",
+    "tags": ["string array (optional, each max 50 chars)"],
+    "category": "string (optional, max 100 chars)"
+  },
+  "template": "string (optional, max 100 chars)",
+  "isPublic": "boolean (optional, default: false)",
+  "questionTypes": ["string array (optional, mcq|true_false|short_answer)"],
+  "topics": ["string array (optional, each max 100 chars)"]
+}
+```
+
+**Response**:
+```json
+
+```
+
+### Adjust Quiz Difficulty Real-time
+**POST** `/api/quiz/adjust-difficulty`  
+**Authentication**: Required  
+**Rate Limit**: 50 requests per 15 minutes  
+**Request Body**:
+```json
+{
+  "quizSessionId": "string (required)",
+  "currentProgress": {
+    "questionsAnswered": "number (required, 0+)",
+    "correctAnswers": "number (required, 0+)",
+    "avgTimePerQuestion": "number (required, 0+)",
+    "hintsUsed": "number (required, 0+)"
+  },
+  "adjustmentType": "string (required, increase|decrease|maintain)"
+}
+```
+
+**Response**:
+```json
+
+```
+
+---
+
+## API Testing Flows
+
+### Flow 1: Create and Take a Quiz
+1. **Authentication**: Login via Auth Service to get Bearer token
+2. **Create Quiz**: `POST /api/quiz` with quiz data
+3. **Get Quiz**: `GET /api/quiz/:quizId` to verify creation
+4. **Submit Quiz**: `POST /api/quiz/:quizId/submit` with answers
+
+### Flow 2: Generate AI-Powered Quiz
+1. **Authentication**: Login via Auth Service to get Bearer token
+2. **Generate Quiz**: `POST /api/quiz/generate` with AI generation parameters
+3. **Take Quiz**: Use returned quiz data to submit answers
+
+### Flow 3: Get Hints During Quiz
+1. **Authentication**: Login via Auth Service to get Bearer token
+2. **Start Quiz**: `GET /api/quiz/:quizId` to get quiz data
+3. **Request Hint**: `POST /api/quiz/:quizId/question/:questionId/hint` for specific questions
+4. **Submit Quiz**: `POST /api/quiz/:quizId/submit` with hint usage tracked
+
+### Flow 4: Adaptive Learning Experience
+1. **Authentication**: Login via Auth Service to get Bearer token
+2. **Create Adaptive Quiz**: `POST /api/quiz/adaptive` with learning parameters
+3. **Real-time Adjustment**: `POST /api/quiz/adjust-difficulty` during quiz session
+4. **Get Suggestions**: `GET /api/quiz/suggestions` for personalized improvement
+
+**Example Postman Testing**:
+- **Base URL**: `http://localhost:3002`
+- **Headers**: `Authorization: Bearer <token>`, `Content-Type: application/json`
+- **Flow**: Auth → Create/Generate Quiz → Take Quiz → Get Analytics
+
+---
 
 ## Error Responses
 
@@ -168,7 +417,7 @@ All endpoints return consistent error format:
   "error": {
     "message": "Error description",
     "functionName": "methodName", 
-    "timestamp": "2025-08-23T16:00:00.000Z",
+    "timestamp": "ISO timestamp",
     "details": "Additional error details (when applicable)"
   }
 }
@@ -176,147 +425,10 @@ All endpoints return consistent error format:
 
 **Common HTTP Status Codes**:
 - `200` - Success
-- `201` - Created (quiz created)
+- `201` - Created
 - `400` - Bad Request (validation errors)
-- `401` - Unauthorized (invalid/missing token)
-- `403` - Forbidden (not quiz owner)
-- `404` - Not Found (quiz not found)
-- `409` - Conflict
-- `429` - Too Many Requests (rate limit exceeded)
+- `401` - Unauthorized
+- `403` - Forbidden
+- `404` - Not Found
+- `429` - Too Many Requests
 - `500` - Internal Server Error
-
-## Rate Limits
-
-- **Quiz operations**: 50 requests per 15 minutes per IP
-- **General endpoints**: 100 requests per 15 minutes per IP
-
-When rate limit is exceeded:
-```json
-{
-  "success": false,
-  "error": {
-    "message": "Too many quiz requests, please try again later.",
-    "code": "QUIZ_RATE_LIMIT_EXCEEDED"
-  }
-}
-```
-
-## Validation Rules
-
-### Quiz Metadata
-- **grade**: Must be integer between 1-12
-- **subject**: 2-100 characters, required
-- **totalQuestions**: Must match actual questions array length
-- **timeLimit**: 5-180 minutes
-- **difficulty**: One of easy|medium|hard|mixed
-
-### Questions Array
-- **Minimum**: 1 question required
-- **Maximum**: 50 questions allowed
-- **questionId**: Must be unique within quiz
-- **MCQ questions**: Must have 2-6 options
-- **True/False questions**: Options array can be empty
-- **Short Answer**: Options array can be empty
-
-### Access Control
-- **Public quizzes**: Visible to all users
-- **Private quizzes**: Only visible to creator and authenticated users in list view
-- **Quiz details**: Private quizzes require authentication and ownership/public status
-- **Modifications**: Only quiz creator can update/delete their quizzes
-
-***
-
-# Changes Needed After All Microservices
-
-## 1. Service Integration Issues
-
-### Missing Import in Auth Service
-**File**: `services/auth-service/src/app.ts`
-**Issue**: User routes not properly imported
-**Fix**: Add proper user routes import:
-```typescript
-import userRoutes from './routes/user.js';
-
-// In initializeRoutes() method:
-this.app.use('/api/user', userRoutes);  // Not /api/auth
-```
-
-### Database Connection Import Missing
-**File**: All service `src/index.ts` files
-**Issue**: Missing mongoose import for graceful shutdown
-**Fix**: Add import:
-```typescript
-import mongoose from 'mongoose';
-```
-
-## 2. Service Client Configuration
-
-### Environment Variables Consistency
-**Issue**: Service URLs need to be consistent across all services
-**Fix**: Update all `.env.example` files to include all service URLs:
-```bash
-AUTH_SERVICE_URL=http://localhost:3001
-QUIZ_SERVICE_URL=http://localhost:3002
-AI_SERVICE_URL=http://localhost:3003
-SUBMISSION_SERVICE_URL=http://localhost:3004
-ANALYTICS_SERVICE_URL=http://localhost:3005
-```
-
-## 3. Cross-Service Authentication
-
-### Token Validation Headers
-**Issue**: Service-to-service calls need proper header forwarding
-**Fix**: Update all service client calls to forward Authorization headers:
-```typescript
-// In all service controllers making external calls
-const authHeader = req.headers.authorization;
-const response = await serviceClient.get('/endpoint', {
-  headers: authHeader ? { Authorization: authHeader } : {}
-});
-```
-
-## 4. Database Naming Consistency
-
-### Database Names
-**Current**: Mixed naming conventions
-**Fix**: Standardize database names:
-```bash
-quiz_auth_db → quiz-auth-db
-quiz_content_db → quiz-content-db  
-quiz_ai_db → quiz-ai-db
-quiz_submissions_db → quiz-submissions-db
-quiz_analytics_db → quiz-analytics-db
-```
-
-## 5. Validation Schema Updates
-
-### Options Field Validation
-**Issue**: Your corrected validation for MCQ options
-**Fix**: Apply to all services with question validation:
-```typescript
-options: Joi.array()
-  .items(Joi.string().trim().max(200))
-  .when('questionType', {
-    is: 'mcq',
-    then: Joi.array()
-      .items(Joi.string().trim().max(200))
-      .required()
-      .min(2)
-      .max(6),
-    otherwise: Joi.optional()
-  })
-```
-
-## 6. Root Package.json Updates
-
-**File**: `package.json` (root)
-**Fix**: Update workspace scripts:
-```json
-{
-  "scripts": {
-    "dev": "concurrently \"cd services/auth-service && yarn dev\" \"cd services/quiz-service && yarn dev\" \"cd services/ai-service && yarn dev\" \"cd services/submission-service && yarn dev\" \"cd services/analytics-service && yarn dev\"",
-    "build:all": "yarn workspaces run build",
-    "test:all": "yarn workspaces run test"
-  }
-}
-```

@@ -3,7 +3,6 @@ npm-debug.log
 Dockerfile
 .dockerignore
 README.md
-.env*
 .git
 .gitignore
 .nyc_output

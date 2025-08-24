@@ -5,12 +5,9 @@ import {
 } from '../utils/errorHandler.js';
 import {logger} from '../utils/logger.js';
 import type {AuthRequest, QuizQuestion} from '../types/index.js';
-import {
-  getAIServiceClient,
-} from 'submission-service/dist/config/serviceClient.js';
 import {sanitizeQuestionsForClient} from '../utils/helper.js';
 import {
-  getAnalyticsServiceClient, getSubmissionServiceClient,
+  getAIServiceClient, getAnalyticsServiceClient, getSubmissionServiceClient,
 } from '../config/serviceClient.js';
 import {sendAnalyticsEmail} from '../utils/emailUtil.js';
 import {SubmissionResponse} from '../types/submissionTypes.js';

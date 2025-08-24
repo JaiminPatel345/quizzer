@@ -1,6 +1,7 @@
 #Dear sir this is not copy from github. I using git just for version control.
 
 .env
+.env.production
 
 node_modules
 .idea
@@ -15,3 +16,4 @@ tmp/
 temp/
 
 temp.md
+

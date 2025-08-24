@@ -1,7 +1,8 @@
 # AI Quizzer
 
-A scalable microservices-based quiz platform with AI-powered question generation, intelligent scoring, and comprehensive
-analytics.
+A scalable microservices-based quiz platform with AI-powered question generation, intelligent scoring, adaptive difficulty, quiz retry functionality, and comprehensive analytics with leaderboards.
+
+you can also see docs on https://jaiminpatel345.github.io/docs
 
 ## 📋 Table of Contents
 
@@ -9,9 +10,10 @@ analytics.
 2. [Services Overview](#services-overview)
 3. [Key Features](#key-features)
 4. [Quick Start Guide](#quick-start-guide)
-5. [Service Documentation](#service-documentation)
-6. [Technology Stack](#technology-stack)
-7. [Development & Deployment](#development--deployment)
+5. [API Flows & Testing](#api-flows--testing)
+6. [Service Documentation](#service-documentation)
+7. [Technology Stack](#technology-stack)
+8. [Development & Deployment](#development--deployment)
 
 ---
 
@@ -25,16 +27,19 @@ analytics.
 │ • Authentication│    │ • Quiz CRUD     │    │ • Question Gen    │
 │ • User Profile  │    │ • Content Mgmt  │    │ • AI Evaluation   │
 │ • JWT Tokens    │    │ • Quiz History  │    │ • Hint Generation │
+│                 │    │ • Adaptive Quiz │    │ • Difficulty Adj  │
 └─────────────────┘    └─────────────────┘    └───────────────────┘
 
-┌──────────────────┐    ┌─────────────────┐    ┌─────────────────────┐
-│Submission Svc    │    │Analytics Service│    │Notification Svc     │
-│   Port 3004      │    │    Port 3005    │    │    Port 3006        │
-│                  │    │                 │    │                     │
-│ • Quiz Scoring   │    │ • Performance   │    │ • Email Alerts      │
-│ • Smart Grading  │    │ • Leaderboards  │    │ • Push Notifications│
-│ • Submission Mgmt│    │ • Trend Analysis│    │ • Event System      │
-└──────────────────┘    └─────────────────┘    └─────────────────────┘
+┌──────────────────┐    ┌─────────────────┐    
+│Submission Svc    │    │Analytics Service│    
+│   Port 3004      │    │    Port 3005    │    
+│                  │    │                 │    
+│ • Quiz Scoring   │    │ • Performance   │    
+│ • Smart Grading  │    │ • Leaderboards  │    
+│ • Submission Mgmt│    │ • Trend Analysis│    
+│ • Quiz Retry     │    │ • User Rankings │    
+│ • Attempt History│    │ • Statistics    │    
+└──────────────────┘    └─────────────────┘    
 ```
 
 ## 📊 Services Overview
@@ -46,7 +51,6 @@ analytics.
 | **AI Service**           | 3003 | `quiz_ai_db`            | AI-powered question generation & evaluation | ✅ Active   |
 | **Submission Service**   | 3004 | `quiz_submissions_db`   | Quiz submission & intelligent scoring       | ✅ Active   |
 | **Analytics Service**    | 3005 | `quiz_analytics_db`     | Performance analytics & leaderboards        | ✅ Active   |
-| **Notification Service** | 3006 | `quiz_notifications_db` | Email & push notifications                  | 🚧 Planned |
 
 ---
 
@@ -54,24 +58,24 @@ analytics.
 
 ### 🤖 AI-Powered Intelligence
 
-- **Smart Question Generation**: Using Groq and Gemini 
-- **Adaptive Difficulty**: Questions adapt to user performance history
+- **Smart Question Generation**: Using Groq and Gemini with adaptive difficulty
+- **Real-time Difficulty Adjustment**: Questions adapt during quiz based on performance
 - **Intelligent Evaluation**: AI-powered feedback and improvement suggestions
 - **Context-Aware Hints**: Dynamic hint generation for learning support
 
-### 📊 Advanced Analytics
+### 📊 Advanced Analytics & Leaderboards
 
 - **Performance Tracking**: Detailed statistics, trends, and progress monitoring
-- **Topic Analysis**: Automated strength/weakness identification
-- **Multiple Leaderboards**: Overall, subject-specific, and time-based rankings
-- **Learning Insights**: Personalized improvement recommendations
+- **Multi-dimensional Leaderboards**: Overall, grade-specific, subject-specific rankings
+- **User Context Integration**: Personal rankings with nearby users
+- **Comprehensive Statistics**: Score analytics, participation rates, distributions
 
-### 🎯 Smart Scoring System
+### 🎯 Smart Scoring & Retry System
 
 - **Multi-Format Support**: MCQ, True/False, Short Answer questions
-- **Fuzzy Matching**: Intelligent short answer evaluation (70% accuracy threshold)
-- **Hint Penalties**: Balanced scoring with 10% reduction per hint (max 50%)
-- **Attempt Tracking**: Complete quiz retry history with progression
+- **Fuzzy Matching**: Intelligent short answer evaluation
+- **Quiz Retry Functionality**: Complete attempt tracking with progression analysis
+- **Attempt Comparison**: Compare performance across multiple attempts
 
 ### 🔐 Enterprise-Grade Security
 
@@ -100,24 +104,23 @@ GEMINI_API_KEY=your-gemini-api-key
 ### Installation
 
 ```bash
-# 1. Download/UnZip repository which you already done :)
+# 1. Unzip repository ; which you already did :)
 cd quizzer
 
-#Make each script executable
+# 2. Make scripts executable
 chmod +x infrastructure/scripts/*.sh
 
-# 2. Install dependencies for all services
-yarn install --workspaces
+# 3. Install dependencies for all services
+yarn install
 
-# 3. Set up environment variables
+# 4. Set up environment variables
 cp .env.example .env
 # Edit .env with your configuration
 
-# 4. Start infrastructure
-docker-compose up -d mongodb redis
+#5 start mongodb and redis server
 
-# 5. Start all services
-yarn dev:all
+# 6. Start all services
+npm run dev:all
 ```
 
 ### Service Health Check
@@ -131,6 +134,85 @@ curl http://localhost:3004/health  # Submission Service
 curl http://localhost:3005/health  # Analytics Service
 ```
 
+---
+
+## � API Flows & Testing
+
+### Authentication Flow
+All protected endpoints require Bearer token authentication. Start by registering and logging in:
+
+**Step 1**: Register user → `POST http://localhost:3001/api/auth/register`  
+**Step 2**: Login → `POST http://localhost:3001/api/auth/login`  
+**Step 3**: Use returned JWT token in Authorization header for all subsequent requests
+
+### Flow 1: Basic Quiz Creation & Submission
+**Purpose**: Create a quiz manually and submit answers
+
+1. **Auth**: Login via Auth Service → Get Bearer token
+2. **Create Quiz**: `POST http://localhost:3002/api/quiz` with quiz data
+3. **Get Quiz**: `GET http://localhost:3002/api/quiz/:quizId` to start taking quiz
+4. **Submit Quiz**: `POST http://localhost:3004/api/submission/submit` with answers
+5. **View Results**: `GET http://localhost:3004/api/submission/:submissionId`
+
+### Flow 2: AI-Powered Quiz Generation
+**Purpose**: Generate quiz using AI and take it
+
+1. **Auth**: Login via Auth Service → Get Bearer token  
+2. **Generate Questions**: `POST http://localhost:3003/api/ai/generate/questions` with requirements
+3. **Create AI Quiz**: `POST http://localhost:3002/api/quiz/generate` with AI parameters
+4. **Take Quiz**: Submit answers using Submission Service
+5. **AI Evaluation**: Enable `requestEvaluation: true` for AI feedback
+
+### Flow 3: Hint Generation During Quiz
+**Purpose**: Get AI-powered hints while taking a quiz
+
+1. **Auth**: Login via Auth Service → Get Bearer token
+2. **Start Quiz**: Get quiz data from Quiz Service
+3. **Request Hint**: `POST http://localhost:3002/api/quiz/:quizId/question/:questionId/hint`
+4. **Progressive Hints**: Request higher hint levels (1, 2, 3) as needed
+5. **Submit with Hint Tracking**: Include `hintsUsed` count in submission
+
+### Flow 4: Adaptive Learning Experience
+**Purpose**: Create personalized adaptive quizzes
+
+1. **Auth**: Login via Auth Service → Get Bearer token
+2. **Get User Performance**: Retrieve from Analytics Service for adaptation
+3. **Create Adaptive Quiz**: `POST http://localhost:3002/api/quiz/adaptive` with performance data
+4. **Real-time Adjustment**: `POST http://localhost:3002/api/quiz/adjust-difficulty` during quiz
+5. **Analyze Results**: Get personalized suggestions from Quiz Service
+
+### Flow 5: Quiz Retry & Attempt Management
+**Purpose**: Retry quizzes and compare performance across attempts
+
+1. **Auth**: Login via Auth Service → Get Bearer token
+2. **View Previous Attempts**: `GET http://localhost:3004/api/submission/quiz/:quizId/attempts`
+3. **Retry Quiz**: `POST http://localhost:3004/api/submission/quiz/:quizId/retry` with new answers
+4. **Compare Attempts**: `GET http://localhost:3004/api/submission/quiz/:quizId/compare`
+5. **Get Best Attempt**: `GET http://localhost:3004/api/submission/quiz/:quizId/best`
+
+### Flow 6: Leaderboards & Analytics
+**Purpose**: View rankings and analyze performance
+
+1. **View Public Leaderboard**: `GET http://localhost:3005/api/leaderboard` (no auth needed)
+2. **Auth for Personal Data**: Login to access user-specific features
+3. **Check Personal Rank**: `GET http://localhost:3005/api/leaderboard/my-rank`
+4. **Get Performance Analytics**: `GET http://localhost:3005/api/analytics/performance`
+5. **View Progress Trends**: `GET http://localhost:3005/api/analytics/trends`
+
+### Flow 7: Real-time Difficulty Adjustment
+**Purpose**: Dynamically adjust quiz difficulty during session
+
+1. **Auth**: Login via Auth Service → Get Bearer token
+2. **Start Adaptive Quiz**: Create quiz with adaptive parameters
+3. **Monitor Progress**: Track user performance during quiz
+4. **Adjust Difficulty**: `POST http://localhost:3003/api/ai/generate/adjust-difficulty`
+5. **Continue Quiz**: Use adjusted questions for remaining quiz items
+
+**Postman Testing Tips**:
+- **Base URLs**: Auth(3001), Quiz(3002), AI(3003), Submission(3004), Analytics(3005)
+- **Headers**: Always include `Authorization: Bearer <token>` and `Content-Type: application/json`
+- **Rate Limits**: AI Service has strict limits (10-30 req/5min), others are more generous
+- **Error Handling**: All services return consistent error format with HTTP status codes
 ---
 
 ## 📚 Service Documentation
@@ -148,14 +230,10 @@ curl http://localhost:3005/health  # Analytics Service
 | `POST` | `/api/auth/login`    | User login with credentials | No            |
 | `POST` | `/api/auth/register` | New user registration       | No            |
 | `POST` | `/api/auth/validate` | JWT token validation        | Yes           |
-| `GET`  | `/api/user/profile`  | Get user profile            | Yes           |
-| `PUT`  | `/api/user/profile`  | Update user profile         | Yes           |
+| `GET`  | `/api/auth/profile`  | Get user profile            | Yes           |
+| `PUT`  | `/api/auth/profile`  | Update user profile         | Yes           |
 
-```bash
-# For more info like payload & rate limiting visit 
-cd services/auth-service
-# and open README.md file
-```
+**📁 For detailed payloads:** See `services/auth-service/README.md`
 
 ---
 
@@ -167,66 +245,22 @@ cd services/auth-service
 
 #### Key Endpoints
 
-| Method   | Endpoint                       | Purpose                    | Auth Required |
-|----------|--------------------------------|----------------------------|---------------|
-| `GET`    | `/api/quiz`                    | Get quizzes with filtering | Optional      |
-| `GET`    | `/api/quiz/{quizId}`           | Get specific quiz          | Optional*     |
-| `POST`   | `/api/quiz`                    | Create new quiz            | Yes           |
-| `PUT`    | `/api/quiz/{quizId}`           | Update quiz metadata       | Yes           |
-| `DELETE` | `/api/quiz/{quizId}`           | Soft delete quiz           | Yes           |
-| `POST`   | `/api/quiz/{quizId}/duplicate` | Duplicate existing quiz    | Yes           |
+| Method   | Endpoint                        | Purpose                    | Auth Required |
+|----------|---------------------------------|----------------------------|---------------|
+| `GET`    | `/api/quiz`                     | Get quizzes with filtering | Optional      |
+| `GET`    | `/api/quiz/:quizId`             | Get specific quiz          | Optional*     |
+| `POST`   | `/api/quiz`                     | Create new quiz            | Yes           |
+| `POST`   | `/api/quiz/generate`            | Generate AI quiz           | Yes           |
+| `POST`   | `/api/quiz/adaptive`            | Create adaptive quiz       | Yes           |
+| `PUT`    | `/api/quiz/:quizId`             | Update quiz metadata       | Yes           |
+| `DELETE` | `/api/quiz/:quizId`             | Soft delete quiz           | Yes           |
+| `POST`   | `/api/quiz/:quizId/duplicate`   | Duplicate existing quiz    | Yes           |
+| `POST`   | `/api/quiz/:quizId/submit`      | Submit quiz (proxy)        | Yes           |
+| `GET`    | `/api/quiz/history`             | Get quiz history           | Yes           |
+| `POST`   | `/api/quiz/:quizId/question/:questionId/hint` | Generate hint | Yes |
+| `POST`   | `/api/quiz/adjust-difficulty`   | Real-time difficulty adjust| Yes           |
 
-*Required for private quizzes
-
-#### Sample Quiz Creation
-
-```json
-{
-  "title": "Grade 8 Algebra Basics",
-  "description": "Introduction to algebraic expressions and equations",
-  "metadata": {
-    "grade": 8,
-    "subject": "Mathematics",
-    "totalQuestions": 15,
-    "timeLimit": 45,
-    "difficulty": "medium",
-    "tags": [
-      "algebra",
-      "equations",
-      "basics"
-    ],
-    "category": "Mathematics"
-  },
-  "questions": [
-    {
-      "questionId": "q1",
-      "questionText": "Solve for x: 2x + 5 = 15",
-      "questionType": "short_answer",
-      "correctAnswer": "5",
-      "explanation": "Subtract 5 from both sides: 2x = 10, then divide by 2: x = 5",
-      "difficulty": "medium",
-      "points": 2,
-      "hints": [
-        "Isolate the variable",
-        "Use inverse operations"
-      ],
-      "topic": "Linear Equations"
-    }
-  ],
-  "isPublic": false
-}
-```
-
-#### Query Parameters for Filtering
-
-- `grade`: 1-12 (filter by grade level)
-- `subject`: Subject name
-- `difficulty`: easy|medium|hard|mixed
-- `category`: Category filter
-- `tags`: Comma-separated tag list
-- `isPublic`: true|false
-- `page`: Page number (default: 1)
-- `limit`: Results per page (max: 100)
+**📁 For detailed payloads:** See `services/quiz-service/README.md`
 
 ---
 
@@ -234,49 +268,20 @@ cd services/auth-service
 
 **Base URL**: `http://localhost:3003`
 **Database**: `quiz_ai_db`
-**Purpose**: AI-powered question generation, hints, and evaluation
-
-#### AI Models Configuration
-
-- **Primary**: Groq (llama-3.1-70b-versatile)
-- **Fallback**: Google Gemini Pro
-- **Strategy**: Groq first, automatic fallback to Gemini
+**Purpose**: AI-powered question generation, evaluation, and adaptive learning
 
 #### Key Endpoints
 
-| Method | Endpoint                       | Purpose                     | Rate Limit   |
-|--------|--------------------------------|-----------------------------|--------------|
-| `POST` | `/api/ai/generate/questions`   | Generate quiz questions     | 10 per 5 min |
-| `POST` | `/api/ai/generate/adaptive`    | Generate adaptive questions | 10 per 5 min |
-| `POST` | `/api/ai/generate/hint`        | Generate question hints     | 10 per 5 min |
-| `POST` | `/api/ai/evaluate/submission`  | Evaluate quiz submission    | 10 per 5 min |
-| `POST` | `/api/ai/evaluate/suggestions` | Get improvement suggestions | 10 per 5 min |
+| Method | Endpoint                           | Purpose                        | Auth Required |
+|--------|------------------------------------|--------------------------------|---------------|
+| `POST` | `/api/ai/generate/questions`       | Generate standard questions    | Yes           |
+| `POST` | `/api/ai/generate/adaptive`        | Generate adaptive questions    | Yes           |
+| `POST` | `/api/ai/generate/adjust-difficulty` | Real-time difficulty adjustment | Yes         |
+| `POST` | `/api/ai/generate/hint`            | Generate hints for questions   | Yes           |
+| `POST` | `/api/ai/evaluate/submission`      | AI evaluation of submissions   | Yes           |
+| `POST` | `/api/ai/evaluate/suggestions`     | Get improvement suggestions    | Yes           |
 
-#### Sample AI Question Generation
-
-```json
-{
-  "grade": 7,
-  "subject": "Science",
-  "difficulty": "medium",
-  "totalQuestions": 10,
-  "topics": [
-    "photosynthesis",
-    "cellular respiration"
-  ],
-  "adaptiveParams": {
-    "userPastPerformance": {
-      "averageScore": 78,
-      "totalQuizzes": 12
-    },
-    "difficultyDistribution": {
-      "easy": 20,
-      "medium": 60,
-      "hard": 20
-    }
-  }
-}
-```
+**📁 For detailed payloads:** See `services/ai-service/README.md`
 
 ---
 
@@ -284,48 +289,22 @@ cd services/auth-service
 
 **Base URL**: `http://localhost:3004`
 **Database**: `quiz_submissions_db`
-**Purpose**: Quiz submission processing, scoring, and history management
-
-#### Scoring Algorithm
-
-- **Multiple Choice**: Exact match scoring
-- **True/False**: Boolean comparison
-- **Short Answer**: Fuzzy matching (70% accuracy threshold)
-- **Hint Penalty**: 10% reduction per hint used (maximum 50% penalty)
+**Purpose**: Quiz submission handling, scoring, and attempt management
 
 #### Key Endpoints
 
-| Method | Endpoint                                 | Purpose                     | Rate Limit     |
-|--------|------------------------------------------|-----------------------------|----------------|
-| `POST` | `/api/submission/submit`                 | Submit quiz for scoring     | 20 per 10 min  |
-| `GET`  | `/api/submission`                        | Get user submission history | 100 per 15 min |
-| `GET`  | `/api/submission/{submissionId}`         | Get specific submission     | 100 per 15 min |
-| `GET`  | `/api/submission/{submissionId}/details` | Get detailed submission     | 100 per 15 min |
+| Method | Endpoint                                | Purpose                      | Auth Required |
+|--------|-----------------------------------------|------------------------------|---------------|
+| `POST` | `/api/submission/submit`                | Submit quiz answers          | Yes           |
+| `GET`  | `/api/submission`                       | Get user submissions         | Yes           |
+| `GET`  | `/api/submission/:submissionId`         | Get specific submission      | Yes           |
+| `GET`  | `/api/submission/:submissionId/details` | Get detailed submission      | Yes           |
+| `GET`  | `/api/submission/quiz/:quizId/attempts` | Get all quiz attempts        | Yes           |
+| `POST` | `/api/submission/quiz/:quizId/retry`    | Retry quiz (new attempt)     | Yes           |
+| `GET`  | `/api/submission/quiz/:quizId/best`     | Get best attempt for quiz    | Yes           |
+| `GET`  | `/api/submission/quiz/:quizId/compare`  | Compare two quiz attempts    | Yes           |
 
-#### Sample Quiz Submission
-
-```json
-{
-  "quizId": "60d5ecb54e24c30015d4f8a1",
-  "answers": [
-    {
-      "questionId": "q1",
-      "userAnswer": "5",
-      "timeSpent": 45,
-      "hintsUsed": 0
-    },
-    {
-      "questionId": "q2",
-      "userAnswer": "photosynthesis",
-      "timeSpent": 60,
-      "hintsUsed": 1
-    }
-  ],
-  "startedAt": "2024-01-15T10:00:00.000Z",
-  "submittedAt": "2024-01-15T10:15:30.000Z",
-  "requestEvaluation": true
-}
-```
+**📁 For detailed payloads:** See `services/submission-service/README.md`
 
 ---
 
@@ -333,38 +312,22 @@ cd services/auth-service
 
 **Base URL**: `http://localhost:3005`
 **Database**: `quiz_analytics_db`
-**Purpose**: Performance tracking, analytics, and leaderboard management
-
-#### Analytics Features
-
-- **Performance Metrics**: Comprehensive statistical analysis
-- **Trend Detection**: Automatic improvement/decline identification
-- **Topic Mastery**: Subject and topic-wise accuracy tracking
-- **Leaderboard Management**: Multiple ranking systems with caching
+**Purpose**: Performance analytics, leaderboards, and user insights
 
 #### Key Endpoints
 
-| Method | Endpoint                                       | Purpose                      | Auth Required |
-|--------|------------------------------------------------|------------------------------|---------------|
-| `GET`  | `/api/analytics/performance`                   | User performance overview    | Yes           |
-| `GET`  | `/api/analytics/performance/{subject}/{grade}` | Subject-specific performance | Yes           |
-| `GET`  | `/api/analytics/trends`                        | Performance trends analysis  | Yes           |
-| `GET`  | `/api/analytics/topics`                        | Topic-wise breakdown         | Yes           |
-| `GET`  | `/api/leaderboard`                             | Get leaderboard rankings     | Optional      |
-| `GET`  | `/api/leaderboard/my-rank`                     | Get user's current rank      | Yes           |
+| Method | Endpoint                                    | Purpose                        | Auth Required |
+|--------|---------------------------------------------|--------------------------------|---------------|
+| `GET`  | `/api/analytics/performance`                | Get overall user performance   | Yes           |
+| `GET`  | `/api/analytics/performance/:subject/:grade`| Get subject-specific performance| Yes          |
+| `GET`  | `/api/analytics/trends`                     | Get performance trends         | Yes           |
+| `GET`  | `/api/analytics/topics`                     | Get topic-wise analysis        | Yes           |
+| `POST` | `/api/analytics/performance/update`         | Update performance (internal)  | Yes           |
+| `GET`  | `/api/leaderboard`                          | Get leaderboard rankings       | Optional      |
+| `GET`  | `/api/leaderboard/top`                      | Get top performers             | No            |
+| `GET`  | `/api/leaderboard/my-rank`                  | Get user's rank                | Yes           |
 
-#### Leaderboard Types
-
-```bash
-# Overall leaderboard
-GET /api/leaderboard?type=overall&limit=50
-
-# Subject-specific leaderboard
-GET /api/leaderboard?type=grade_subject&grade=8&subject=Math&limit=50
-
-# Monthly leaderboard
-GET /api/leaderboard?type=monthly&month=12&year=2024&limit=50
-```
+**📁 For detailed payloads:** See `services/analytics-service/README.md`
 
 ---
 

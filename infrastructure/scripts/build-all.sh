@@ -34,6 +34,16 @@ echo -e "${YELLOW}🐳 Building Docker images...${NC}"
 for service in "${SERVICES[@]}"; do
     echo -e "${BLUE}Building Docker image for $service...${NC}"
     cd "$ROOT_DIR"
+    
+    # Ensure .env file is available for Docker context
+    if [ -f ".env" ]; then
+        echo -e "${GREEN}✅ .env file found, copying to $service directory${NC}"
+        cp .env ./services/$service/.env
+    else
+        echo -e "${RED}❌ .env file not found in root directory${NC}"
+        exit 1
+    fi
+    
     docker build -t quizzer-$service:latest ./services/$service/
     echo -e "${GREEN}✅ Docker image built for $service${NC}"
 done

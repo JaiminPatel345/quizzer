@@ -5,6 +5,17 @@
 **Authentication**: Bearer token required for all endpoints  
 **Dependencies**: Auth Service for authentication, Groq API, Gemini API
 
+---
+
+## Table of Contents
+1. [Health & Info Endpoints](#health--info-endpoints)
+2. [AI Question Generation Endpoints](#ai-question-generation-endpoints)
+3. [AI Evaluation Endpoints](#ai-evaluation-endpoints)
+4. [Adaptive Learning Endpoints](#adaptive-learning-endpoints)
+5. [API Testing Flows](#api-testing-flows)
+
+---
+
 ## Health & Info Endpoints
 
 ### Service Info
@@ -12,42 +23,259 @@
 **Authentication**: None  
 **Response**:
 ```json
-{
-    "success": true,
-    "message": "AI Service API",
-    "version": "1.0.0",
-    "endpoints": {
-        "health": "/health",
-        "generation": "/api/ai/generate",
-        "evaluation": "/api/ai/evaluate"
-    }
-}
-```
 
+```
 
 ### Health Check
 **GET** `/health`  
 **Authentication**: None  
 **Response**:
 ```json
-{
-    "success": true,
-    "service": "ai-service",
-    "status": "healthy",
-    "timestamp": "2025-08-23T19:01:04.365Z"
-}
+
 ```
+
 ---
 
-## AI Generation Endpoints
+## AI Question Generation Endpoints
 
-### Generate Quiz Questions
+### Generate Standard Questions
 **POST** `/api/ai/generate/questions`  
 **Authentication**: Required  
 **Rate Limit**: 10 requests per 5 minutes  
 **Request Body**:
 ```json
 {
+  "grade": "number (required, 1-12)",
+  "subject": "string (required, 2-100 chars)",
+  "difficulty": "string (required, easy|medium|hard|mixed)",
+  "totalQuestions": "number (required, 1-50)",
+  "topics": ["string array (optional, each max 100 chars)"],
+  "adaptiveParams": {
+    "userPastPerformance": {
+      "averageScore": "number (required, 0-100)",
+      "totalQuizzes": "number (required, 0+)",
+      "strongSubjects": ["string array (optional, each max 100 chars)"],
+      "weakSubjects": ["string array (optional, each max 100 chars)"],
+      "recentPerformance": [
+        {
+          "score": "number (optional, 0-100)",
+          "date": "string (optional, ISO date)",
+          "subject": "string (optional, max 100 chars)"
+        }
+      ]
+    },
+    "targetDifficulty": "string (optional, easy|medium|hard)",
+    "focusAreas": ["string array (optional, each max 100 chars)"],
+    "adaptationStrategy": "string (optional, performance_based|weakness_focus|balanced)"
+  }
+}
+```
+
+**Response**:
+```json
+
+```
+
+### Generate Adaptive Questions
+**POST** `/api/ai/generate/adaptive`  
+**Authentication**: Required  
+**Rate Limit**: 10 requests per 5 minutes  
+**Request Body**:
+```json
+{
+  "grade": "number (required, 1-12)",
+  "subject": "string (required, 2-100 chars)",
+  "difficulty": "string (required, easy|medium|hard|mixed)",
+  "totalQuestions": "number (required, 1-50)",
+  "topics": ["string array (optional, each max 100 chars)"],
+  "userPerformanceProfile": {
+    "averageScore": "number (required, 0-100)",
+    "strongAreas": ["string array (optional, each max 100 chars)"],
+    "weakAreas": ["string array (optional, each max 100 chars)"],
+    "learningStyle": "string (optional, visual|auditory|kinesthetic|reading)",
+    "difficultyPreference": "string (optional, gradual|challenge|mixed)"
+  },
+  "adaptationLevel": "string (optional, basic|intermediate|advanced)"
+}
+```
+
+**Response**:
+```json
+
+```
+
+### Real-time Difficulty Adjustment
+**POST** `/api/ai/generate/adjust-difficulty`  
+**Authentication**: Required  
+**Rate Limit**: 20 requests per 5 minutes  
+**Request Body**:
+```json
+{
+  "quizSessionId": "string (required)",
+  "currentProgress": {
+    "questionsAnswered": "number (required, 0+)",
+    "correctAnswers": "number (required, 0+)",
+    "avgTimePerQuestion": "number (required, 0+)",
+    "hintsUsed": "number (required, 0+)"
+  },
+  "adjustmentType": "string (required, increase|decrease|maintain)",
+  "nextQuestionCount": "number (optional, 1-10, default: 1)"
+}
+```
+
+**Response**:
+```json
+
+```
+
+### Generate Hint for Question
+**POST** `/api/ai/generate/hint`  
+**Authentication**: Required  
+**Rate Limit**: 30 requests per 5 minutes  
+**Request Body**:
+```json
+{
+  "questionText": "string (required, 10-1000 chars)",
+  "questionType": "string (required, mcq|true_false|short_answer)",
+  "correctAnswer": "string (required)",
+  "userAnswer": "string (optional)",
+  "hintLevel": "number (optional, 1-3, default: 1)",
+  "subject": "string (required, 2-100 chars)",
+  "grade": "number (required, 1-12)"
+}
+```
+
+**Response**:
+```json
+
+```
+
+---
+
+## AI Evaluation Endpoints
+
+### Evaluate Quiz Submission
+**POST** `/api/ai/evaluate/submission`  
+**Authentication**: Required  
+**Rate Limit**: 20 requests per 5 minutes  
+**Request Body**:
+```json
+{
+  "quizId": "string (required, MongoDB ObjectId)",
+  "submissionId": "string (required, MongoDB ObjectId)",
+  "answers": [
+    {
+      "questionId": "string (required)",
+      "questionText": "string (required)",
+      "questionType": "string (required, mcq|true_false|short_answer)",
+      "userAnswer": "string (required)",
+      "correctAnswer": "string (required)",
+      "isCorrect": "boolean (required)",
+      "timeSpent": "number (optional, 0+)",
+      "hintsUsed": "number (optional, 0+)"
+    }
+  ],
+  "overallScore": "number (required, 0-100)",
+  "grade": "number (required, 1-12)",
+  "subject": "string (required, 2-100 chars)"
+}
+```
+
+**Response**:
+```json
+
+```
+
+### Get Improvement Suggestions
+**POST** `/api/ai/evaluate/suggestions`  
+**Authentication**: Required  
+**Rate Limit**: 15 requests per 5 minutes  
+**Request Body**:
+```json
+{
+  "userId": "string (required, MongoDB ObjectId)",
+  "grade": "number (required, 1-12)",
+  "subject": "string (required, 2-100 chars)",
+  "recentPerformance": [
+    {
+      "quizId": "string (required)",
+      "score": "number (required, 0-100)",
+      "completedAt": "string (required, ISO date)",
+      "weakTopics": ["string array (optional)"],
+      "timeSpent": "number (optional, 0+)"
+    }
+  ],
+  "targetScore": "number (optional, 0-100, default: current average + 10)",
+  "suggestionType": "string (optional, study_plan|resource_recommendation|practice_areas|all)"
+}
+```
+
+**Response**:
+```json
+
+```
+
+---
+
+## API Testing Flows
+
+### Flow 1: AI Question Generation
+1. **Authentication**: Login via Auth Service to get Bearer token
+2. **Generate Questions**: `POST /api/ai/generate/questions` with topic requirements
+3. **Use Generated Questions**: Send to Quiz Service for quiz creation
+
+### Flow 2: Adaptive Learning Experience
+1. **Authentication**: Login via Auth Service to get Bearer token
+2. **Get User Performance**: Retrieve from Analytics Service
+3. **Generate Adaptive Questions**: `POST /api/ai/generate/adaptive` with performance data
+4. **Real-time Adjustment**: `POST /api/ai/generate/adjust-difficulty` during quiz
+
+### Flow 3: Hint Generation During Quiz
+1. **Authentication**: Login via Auth Service to get Bearer token
+2. **Request Hint**: `POST /api/ai/generate/hint` for specific question
+3. **Progressive Hints**: Call with increasing hint levels (1, 2, 3)
+
+### Flow 4: AI-Powered Evaluation & Suggestions
+1. **Authentication**: Login via Auth Service to get Bearer token
+2. **Submit for Evaluation**: `POST /api/ai/evaluate/submission` after quiz completion
+3. **Get Suggestions**: `POST /api/ai/evaluate/suggestions` for improvement areas
+
+**Example Postman Testing**:
+- **Base URL**: `http://localhost:3003`
+- **Headers**: `Authorization: Bearer <token>`, `Content-Type: application/json`
+- **Rate Limits**: Strict AI limits (10-30 requests per 5 minutes)
+- **Flow**: Auth → Generate Questions → Create Quiz → Evaluate Results
+
+---
+
+## Error Responses
+
+All endpoints return consistent error format:
+```json
+{
+  "success": false,
+  "error": {
+    "message": "Error description",
+    "functionName": "methodName", 
+    "timestamp": "ISO timestamp",
+    "details": "Additional error details (when applicable)"
+  }
+}
+```
+
+**Common HTTP Status Codes**:
+- `200` - Success
+- `400` - Bad Request (validation errors)
+- `401` - Unauthorized
+- `403` - Forbidden (API quota exceeded)
+- `429` - Too Many Requests (rate limit exceeded)
+- `500` - Internal Server Error
+- `503` - Service Unavailable (AI provider issues)
+
+**Rate Limit Headers**:
+- `X-RateLimit-Limit`: Request limit per window
+- `X-RateLimit-Remaining`: Remaining requests
+- `X-RateLimit-Reset`: Time when limit resets
   "grade": "number (required, 1-12)",
   "subject": "string (required, 2-100 chars)",
   "difficulty": "string (required, easy|medium|hard|mixed)",

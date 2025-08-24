@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # Auth Service
+  auth-service:
+    image: quizzer-auth-service:latest
+    container_name: quizzer-auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+    networks:
+      - quizzer-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Quiz Service
+  quiz-service:
+    image: quizzer-quiz-service:latest
+    container_name: quizzer-quiz-service
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - AI_SERVICE_URL=http://ai-service:3003
+    depends_on:
+      ai-service:
+        condition: service_healthy
+    networks:
+      - quizzer-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # AI Service
+  ai-service:
+    image: quizzer-ai-service:latest
+    container_name: quizzer-ai-service
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=development
+      - PORT=3003
+    networks:
+      - quizzer-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3003/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Submission Service
+  submission-service:
+    image: quizzer-submission-service:latest
+    container_name: quizzer-submission-service
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - AI_SERVICE_URL=http://ai-service:3003
+      - QUIZ_SERVICE_URL=http://quiz-service:3002
+    depends_on:
+      ai-service:
+        condition: service_healthy
+      quiz-service:
+        condition: service_healthy
+    networks:
+      - quizzer-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3004/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Analytics Service
+  analytics-service:
+    image: quizzer-analytics-service:latest
+    container_name: quizzer-analytics-service
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=development
+      - PORT=3005
+    networks:
+      - quizzer-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3005/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  quizzer-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+  redis_data:
