@@ -1,18 +1,26 @@
-# AI Service Dockerfile - Optimized Multi-stage build
+# AI Service Dockerfile - Yarn workspaces, multi-stage build
 FROM node:20-alpine AS builder
 
-WORKDIR /app
+# Use a consistent workdir representing repo root
+WORKDIR /workspace
 
-# Copy package files from service context
-COPY package*.json ./
-COPY tsconfig.json ./
+# Enable yarn and copy root manifests
+COPY package.json yarn.lock ./
 
-# Install all deps for build
-RUN npm ci
+# Copy workspace manifests for better layer caching
+COPY services/auth-service/package.json services/auth-service/tsconfig.json ./services/auth-service/
+COPY services/quiz-service/package.json services/quiz-service/tsconfig.json ./services/quiz-service/
+COPY services/ai-service/package.json services/ai-service/tsconfig.json ./services/ai-service/
+COPY services/submission-service/package.json services/submission-service/tsconfig.json ./services/submission-service/
+COPY services/analytics-service/package.json services/analytics-service/tsconfig.json ./services/analytics-service/
 
-# Copy source and build
-COPY src/ ./src/
-RUN npm run build
+# Install yarn v1 and dependencies using the root lockfile
+RUN npm i -g yarn@1.22.22 \
+  && yarn install --frozen-lockfile
+
+# Copy only this service's source and build it via workspace script
+COPY services/ai-service/src ./services/ai-service/src
+RUN yarn workspace ai-service build
 
 # Production stage
 FROM node:20-alpine AS production
@@ -23,15 +31,20 @@ RUN apk add --no-cache dumb-init
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && adduser -S nodeuser -u 1001
 
-# Set working directory
+# App runtime directory
 WORKDIR /app
 
-# Only production deps
-COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+# Copy runtime manifest and lockfile (use root lock for reproducible installs)
+COPY services/ai-service/package.json ./package.json
+COPY yarn.lock ./yarn.lock
 
-# Copy built app
-COPY --from=builder /app/dist ./dist
+# Install only production deps; fall back if frozen lock cannot be satisfied
+RUN npm i -g yarn@1.22.22 \
+  && (yarn install --production --frozen-lockfile || yarn install --production) \
+  && yarn cache clean
+
+# Copy built app from builder
+COPY --from=builder /workspace/services/ai-service/dist ./dist
 
 # Prepare runtime dirs
 RUN mkdir -p logs && chown -R nodeuser:nodejs /app

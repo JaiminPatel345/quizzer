@@ -1,57 +1,51 @@
-# Submission Service Dockerfile - Optimized Multi-stage build
+# Submission Service Dockerfile - Yarn workspaces, multi-stage build
 FROM node:20-alpine AS builder
 
-# Set working directory
-WORKDIR /app
+WORKDIR /workspace
 
-# Copy package files for submission service
-COPY package*.json ./
-COPY tsconfig.json ./
+# Root manifests
+COPY package.json yarn.lock ./
 
-# Install all dependencies (including dev dependencies for build)
-RUN npm ci
+# Workspace manifests for caching
+COPY services/auth-service/package.json services/auth-service/tsconfig.json ./services/auth-service/
+COPY services/quiz-service/package.json services/quiz-service/tsconfig.json ./services/quiz-service/
+COPY services/ai-service/package.json services/ai-service/tsconfig.json ./services/ai-service/
+COPY services/submission-service/package.json services/submission-service/tsconfig.json ./services/submission-service/
+COPY services/analytics-service/package.json services/analytics-service/tsconfig.json ./services/analytics-service/
 
-# Copy source code for submission service
-COPY src/ ./src/
+# Install deps via yarn workspaces
+RUN npm i -g yarn@1.22.22 \
+  && yarn install --frozen-lockfile
 
-# Build TypeScript to JavaScript
-RUN npm run build
+# Copy source and build this workspace only
+COPY services/submission-service/src ./services/submission-service/src
+RUN yarn workspace submission-service build
 
 # Production stage
 FROM node:20-alpine AS production
 
-# Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
+RUN addgroup -g 1001 -S nodejs && adduser -S nodeuser -u 1001
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodeuser -u 1001
-
-# Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+COPY services/submission-service/package.json ./package.json
+COPY yarn.lock ./yarn.lock
 
-# Install only production dependencies
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm i -g yarn@1.22.22 \
+  && (yarn install --production --frozen-lockfile || yarn install --production) \
+  && yarn cache clean
 
-# Copy built application from builder stage
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /workspace/services/submission-service/dist ./dist
 
-# Create logs directory
 RUN mkdir -p logs && chown -R nodeuser:nodejs /app
 
-# Switch to non-root user
 USER nodeuser
 
-# Expose port
 EXPOSE 3004
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3004/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
-# Start the application
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "dist/index.js"]

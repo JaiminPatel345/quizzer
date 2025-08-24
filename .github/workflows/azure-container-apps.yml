@@ -70,7 +70,7 @@ jobs:
       - name: Build and push auth-service
         uses: docker/build-push-action@v5
         with:
-          context: ./services/auth-service
+          context: .
           file: ./services/auth-service/Dockerfile
           push: true
           tags: |
@@ -80,7 +80,7 @@ jobs:
       - name: Build and push quiz-service
         uses: docker/build-push-action@v5
         with:
-          context: ./services/quiz-service
+          context: .
           file: ./services/quiz-service/Dockerfile
           push: true
           tags: |
@@ -90,7 +90,7 @@ jobs:
       - name: Build and push ai-service
         uses: docker/build-push-action@v5
         with:
-          context: ./services/ai-service
+          context: .
           file: ./services/ai-service/Dockerfile
           push: true
           tags: |
@@ -100,7 +100,7 @@ jobs:
       - name: Build and push submission-service
         uses: docker/build-push-action@v5
         with:
-          context: ./services/submission-service
+          context: .
           file: ./services/submission-service/Dockerfile
           push: true
           tags: |
@@ -110,7 +110,7 @@ jobs:
       - name: Build and push analytics-service
         uses: docker/build-push-action@v5
         with:
-          context: ./services/analytics-service
+          context: .
           file: ./services/analytics-service/Dockerfile
           push: true
           tags: |
