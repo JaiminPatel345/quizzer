@@ -42,7 +42,44 @@ User authentication, registration, profile management, and JWT token handling.
 ```
 
 **Response**:
-
+```json
+{
+    "success": true,
+    "message": "Registration successful",
+    "data": {
+        "user": {
+            "username": "jaimin123",
+            "email": "jaiminpatel03042005@gmail.com",
+            "profile": {
+                "firstName": "Jaimin",
+                "lastName": "Detroja",
+                "grade": 8,
+                "preferredSubjects": [
+                    "Math",
+                    "Physics",
+                    "JavaScript",
+                    "Java"
+                ]
+            },
+            "preferences": {
+                "emailNotifications": true,
+                "difficulty": "adaptive"
+            },
+            "performance": {
+                "totalQuizzesTaken": 0,
+                "averageScore": 0,
+                "strongSubjects": [],
+                "weakSubjects": []
+            },
+            "_id": "68a9f2d17a071e1e71ca5966",
+            "createdAt": "2025-08-23T16:56:49.532Z",
+            "updatedAt": "2025-08-23T16:56:49.532Z"
+        },
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGE5ZjJkMTdhMDcxZTFlNzFjYTU5NjYiLCJ1c2VybmFtZSI6ImphaW1pbjEyMyIsImVtYWlsIjoiamFpbWlucGF0ZWwwMzA0MjAwNUBnbWFpbC5jb20iLCJpYXQiOjE3NTU5NjgyMDksImV4cCI6MTc1NjU3MzAwOX0.dxcC-lkctLYtjcNq2IpZ9TkmsWeCMzO6skXakrympq8",
+        "expiresIn": "7d"
+    }
+}
+```
 
 ---
 
@@ -65,7 +102,37 @@ User authentication, registration, profile management, and JWT token handling.
 ```
 
 **Response**:
-
+```json
+{
+    "success": true,
+    "message": "Login successful",
+    "data": {
+        "user": {
+            "username": "jaimin123",
+            "email": "jaimin123@mock.com",
+            "profile": {
+                "preferredSubjects": []
+            },
+            "preferences": {
+                "emailNotifications": true,
+                "difficulty": "adaptive"
+            },
+            "performance": {
+                "totalQuizzesTaken": 0,
+                "averageScore": 0,
+                "strongSubjects": [],
+                "weakSubjects": []
+            },
+            "_id": "68ab2251e6222bb4a1d98a85",
+            "createdAt": "2025-08-24T14:31:45.466Z",
+            "updatedAt": "2025-08-24T14:31:45.498Z",
+            "lastLoginAt": "2025-08-24T14:31:45.497Z"
+        },
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OGFiMjI1MWU2MjIyYmI0YTFkOThhODUiLCJ1c2VybmFtZSI6ImphaW1pbjEyMyIsImVtYWlsIjoiamFpbWluMTIzQG1vY2suY29tIiwiaWF0IjoxNzU2MDQ1OTA1LCJleHAiOjE3NTY2NTA3MDV9.xk9f80wYYHrwfEN1qv8NNaiTieR1vxq-StoPZgDPCZc",
+        "expiresIn": "7d"
+    }
+}
+```
 
 ---
 
@@ -87,13 +154,43 @@ Authorization: Bearer <jwt-token>
 ```
 
 **Response**:
+```json
+{
+    "success": true,
+    "message": "Token is valid",
+    "data": {
+        "user": {
+            "_id": "68ab2251e6222bb4a1d98a85",
+            "username": "jaimin123",
+            "email": "jaimin123@mock.com",
+            "profile": {
+                "preferredSubjects": []
+            },
+            "preferences": {
+                "emailNotifications": true,
+                "difficulty": "adaptive"
+            },
+            "performance": {
+                "totalQuizzesTaken": 0,
+                "averageScore": 0,
+                "strongSubjects": [],
+                "weakSubjects": []
+            },
+            "createdAt": "2025-08-24T14:31:45.466Z",
+            "updatedAt": "2025-08-24T14:31:45.498Z",
+            "lastLoginAt": "2025-08-24T14:31:45.497Z"
+        },
+        "isValid": true
+    }
+}
+```
 
 
 ---
 
 ### 4. Get User Profile
 
-**GET** `/api/auth/profile`
+**GET** `/api/user/profile`
 
 **Purpose**: Get current user's profile information
 
@@ -109,13 +206,41 @@ Authorization: Bearer <jwt-token>
 ```
 
 **Response**:
-
+```json
+{
+    "success": true,
+    "message": "Profile retrieved successfully",
+    "data": {
+        "user": {
+            "_id": "68ab2251e6222bb4a1d98a85",
+            "username": "jaimin123",
+            "email": "jaimin123@mock.com",
+            "profile": {
+                "preferredSubjects": []
+            },
+            "preferences": {
+                "emailNotifications": true,
+                "difficulty": "adaptive"
+            },
+            "performance": {
+                "totalQuizzesTaken": 0,
+                "averageScore": 0,
+                "strongSubjects": [],
+                "weakSubjects": []
+            },
+            "createdAt": "2025-08-24T14:31:45.466Z",
+            "updatedAt": "2025-08-24T14:31:45.498Z",
+            "lastLoginAt": "2025-08-24T14:31:45.497Z"
+        }
+    }
+}
+```
 
 ---
 
 ### 5. Update User Profile
 
-**PUT** `/api/auth/profile`
+**PUT** `/api/user/profile`
 
 **Purpose**: Update user profile information
 
@@ -142,7 +267,35 @@ Authorization: Bearer <jwt-token>
 ```
 
 **Response**:
-
+```json
+{
+    "success": true,
+    "message": "Profile updated successfully",
+    "data": {
+        "user": {
+            "_id": "68ab2251e6222bb4a1d98a85",
+            "username": "jaimin123",
+            "email": "jaimin123@mock.com",
+            "profile": {
+                "preferredSubjects": []
+            },
+            "preferences": {
+                "emailNotifications": false,
+                "difficulty": "adaptive"
+            },
+            "performance": {
+                "totalQuizzesTaken": 0,
+                "averageScore": 0,
+                "strongSubjects": [],
+                "weakSubjects": []
+            },
+            "createdAt": "2025-08-24T14:31:45.466Z",
+            "updatedAt": "2025-08-24T14:37:17.890Z",
+            "lastLoginAt": "2025-08-24T14:31:45.497Z"
+        }
+    }
+}
+```
 
 ---
 
@@ -177,79 +330,6 @@ MONGODB_URI=mongodb://localhost:27017/quiz_auth_db
 # Optional
 LOG_LEVEL=info
 NODE_ENV=development
-```
-
----
-
-## 🧪 Testing Examples
-
-### Register New User
-```bash
-curl -X POST http://localhost:3001/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "testuser",
-    "email": "test@example.com",
-    "password": "password123"
-  }'
-```
-
-### Login User
-```bash
-curl -X POST http://localhost:3001/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "testuser",
-    "password": "password123"
-  }'
-```
-
-### Get Profile (with token)
-```bash
-curl -X GET http://localhost:3001/api/auth/profile \
-  -H "Authorization: Bearer <your-jwt-token>"
-```
-
-### Update Profile
-```bash
-curl -X PUT http://localhost:3001/api/auth/profile \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <your-jwt-token>" \
-  -d '{
-    "preferences": {
-      "emailNotifications": false,
-      "difficulty": "hard"
-    }
-  }'
-```
-
----
-
-## 📊 User Data Model
-
-```json
-{
-  "_id": "ObjectId",
-  "username": "string",
-  "email": "string", 
-  "password": "string (hashed)",
-  "profile": {
-    "preferredSubjects": ["array of strings"]
-  },
-  "preferences": {
-    "emailNotifications": "boolean",
-    "difficulty": "string"
-  },
-  "performance": {
-    "totalQuizzesTaken": "number",
-    "averageScore": "number", 
-    "strongSubjects": ["array of strings"],
-    "weakSubjects": ["array of strings"]
-  },
-  "lastLoginAt": "Date",
-  "createdAt": "Date",
-  "updatedAt": "Date"
-}
 ```
 
 ---

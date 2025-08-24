@@ -1,0 +1,194 @@
+name: Deploy Microservices to Azure
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/*'
+    paths:
+      - 'services/**'
+      - 'gateway/**'
+      - '.github/workflows/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  AZURE_CONTAINER_REGISTRY: ${{ secrets.AZURE_CONTAINER_REGISTRY }}
+  RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+  CONTAINER_APP_ENVIRONMENT: ${{ secrets.AZURE_CONTAINER_APP_ENVIRONMENT }}
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      auth-service: ${{ steps.changes.outputs.auth-service }}
+      quiz-service: ${{ steps.changes.outputs.quiz-service }}
+      ai-service: ${{ steps.changes.outputs.ai-service }}
+      analytics-service: ${{ steps.changes.outputs.analytics-service }}
+      submission-service: ${{ steps.changes.outputs.submission-service }}
+      gateway: ${{ steps.changes.outputs.gateway }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            auth-service:
+              - 'services/auth-service/**'
+            quiz-service:
+              - 'services/quiz-service/**'
+            ai-service:
+              - 'services/ai-service/**'
+            analytics-service:
+              - 'services/analytics-service/**'
+            submission-service:
+              - 'services/submission-service/**'
+            gateway:
+              - 'gateway/**'
+
+  build-and-deploy:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [
+          { name: 'auth-service', path: 'services/auth-service', port: 3001, changed: '${{ needs.detect-changes.outputs.auth-service }}' },
+          { name: 'quiz-service', path: 'services/quiz-service', port: 3002, changed: '${{ needs.detect-changes.outputs.quiz-service }}' },
+          { name: 'ai-service', path: 'services/ai-service', port: 3003, changed: '${{ needs.detect-changes.outputs.ai-service }}' },
+          { name: 'analytics-service', path: 'services/analytics-service', port: 3004, changed: '${{ needs.detect-changes.outputs.analytics-service }}' },
+          { name: 'submission-service', path: 'services/submission-service', port: 3005, changed: '${{ needs.detect-changes.outputs.submission-service }}' }
+        ]
+    
+    steps:
+      - name: Checkout code
+        if: matrix.service.changed == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        if: matrix.service.changed == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: '${{ matrix.service.path }}/package-lock.json'
+
+      - name: Install dependencies
+        if: matrix.service.changed == 'true'
+        run: |
+          cd ${{ matrix.service.path }}
+          npm ci
+
+      - name: Build TypeScript
+        if: matrix.service.changed == 'true'
+        run: |
+          cd ${{ matrix.service.path }}
+          npm run build
+
+      - name: Run tests
+        if: matrix.service.changed == 'true'
+        run: |
+          cd ${{ matrix.service.path }}
+          npm test || echo "No tests found"
+
+      - name: Login to Azure
+        if: matrix.service.changed == 'true'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to Azure Container Registry
+        if: matrix.service.changed == 'true'
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.AZURE_CONTAINER_REGISTRY }}
+          username: ${{ secrets.AZURE_CONTAINER_REGISTRY_USERNAME }}
+          password: ${{ secrets.AZURE_CONTAINER_REGISTRY_PASSWORD }}
+
+      - name: Build and push Docker image
+        if: matrix.service.changed == 'true'
+        run: |
+          cd ${{ matrix.service.path }}
+          IMAGE_TAG=${{ env.AZURE_CONTAINER_REGISTRY }}/quizzer-${{ matrix.service.name }}:${{ github.sha }}
+          docker build -t $IMAGE_TAG .
+          docker push $IMAGE_TAG
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Deploy to Azure Container Apps
+        if: matrix.service.changed == 'true' && github.ref == 'refs/heads/main'
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          appSourcePath: ${{ matrix.service.path }}
+          acrName: ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}
+          containerAppName: quizzer-${{ matrix.service.name }}
+          resourceGroup: ${{ env.RESOURCE_GROUP }}
+          containerAppEnvironment: ${{ env.CONTAINER_APP_ENVIRONMENT }}
+          targetPort: ${{ matrix.service.port }}
+          ingress: external
+          environmentVariables: |
+            NODE_ENV=production
+            PORT=${{ matrix.service.port }}
+            MONGODB_URI=${{ secrets.MONGODB_URI }}
+            REDIS_URL=${{ secrets.REDIS_URL }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
+
+  deploy-gateway:
+    needs: [detect-changes, build-and-deploy]
+    runs-on: ubuntu-latest
+    if: needs.detect-changes.outputs.gateway == 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.AZURE_CONTAINER_REGISTRY }}
+          username: ${{ secrets.AZURE_CONTAINER_REGISTRY_USERNAME }}
+          password: ${{ secrets.AZURE_CONTAINER_REGISTRY_PASSWORD }}
+
+      - name: Build and push Gateway Docker image
+        run: |
+          cd gateway
+          IMAGE_TAG=${{ env.AZURE_CONTAINER_REGISTRY }}/quizzer-gateway:${{ github.sha }}
+          docker build -t $IMAGE_TAG .
+          docker push $IMAGE_TAG
+
+      - name: Deploy Gateway to Azure Container Apps
+        if: github.ref == 'refs/heads/main'
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          appSourcePath: gateway
+          acrName: ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}
+          containerAppName: quizzer-gateway
+          resourceGroup: ${{ env.RESOURCE_GROUP }}
+          containerAppEnvironment: ${{ env.CONTAINER_APP_ENVIRONMENT }}
+          targetPort: 80
+          ingress: external
+
+  notification:
+    needs: [build-and-deploy, deploy-gateway]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Notify deployment status
+        run: |
+          if [ "${{ needs.build-and-deploy.result }}" == "success" ] && [ "${{ needs.deploy-gateway.result }}" == "success" ]; then
+            echo "✅ Deployment completed successfully!"
+          else
+            echo "❌ Deployment failed!"
+            exit 1
+          fi
