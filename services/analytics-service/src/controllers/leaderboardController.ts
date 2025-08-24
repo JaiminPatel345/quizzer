@@ -1,52 +1,64 @@
 import type { Response } from 'express';
+import { Types } from 'mongoose';
 import { Leaderboard } from '../models/Leaderboard.js';
 import { AnalyticsService } from '../services/analyticsService.js';
-import { handleError, BadRequestError } from '../utils/errorHandler.js';
+import { LeaderboardService } from '../services/leaderboardService.js';
+import { handleError, BadRequestError, UnauthorizedError } from '../utils/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import type { AuthRequest, LeaderboardCriteria } from '../types/index.js';
 
 export const getLeaderboard = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { type, grade, subject, timeframe, month, year, limit } = req.query;
+    const { 
+      type = 'overall', 
+      grade, 
+      subject, 
+      timeframe = 'all_time', 
+      limit = '50',
+      includeUser = 'false',
+      sortBy = 'score'
+    } = req.query;
 
-    const leaderboardType = type as string || 'overall';
-    const limitNumber = parseInt(limit as string) || 50;
+    const limitNumber = Math.min(parseInt(limit as string) || 50, 100); // Max 100 entries
+    const userId = req.user?._id ? new Types.ObjectId(req.user._id) : undefined;
+
+    // Validate parameters
+    if (grade && (parseInt(grade as string) < 1 || parseInt(grade as string) > 12)) {
+      throw new BadRequestError('Grade must be between 1 and 12');
+    }
+
+    if (!['overall', 'grade', 'subject', 'grade_subject'].includes(type as string)) {
+      throw new BadRequestError('Invalid leaderboard type');
+    }
+
+    if (!['all_time', 'monthly', 'weekly', 'daily'].includes(timeframe as string)) {
+      throw new BadRequestError('Invalid timeframe');
+    }
 
     // Build criteria
     const criteria: LeaderboardCriteria = {
-      timeframe: (timeframe as any) || 'all_time'
+      type: type as string,
+      timeframe: timeframe as any,
+      sortBy: sortBy as string
     };
 
     if (grade) criteria.grade = parseInt(grade as string);
     if (subject) criteria.subject = subject as string;
-    if (month) criteria.month = parseInt(month as string);
-    if (year) criteria.year = parseInt(year as string);
 
-    // Check cache first
-    const cachedLeaderboard = await Leaderboard.findOne({
-      type: leaderboardType,
-      criteria,
-      'metadata.cacheExpiry': { $gt: new Date() }
-    }).lean();
+    // Generate leaderboard using enhanced service
+    const leaderboard = await LeaderboardService.generateEnhancedLeaderboard(
+      criteria, 
+      limitNumber,
+      includeUser === 'true' ? userId : undefined
+    );
 
-    if (cachedLeaderboard) {
-      logger.info('Leaderboard served from cache:', { type: leaderboardType });
-      res.status(200).json({
-        success: true,
-        message: 'Leaderboard retrieved successfully (cached)',
-        data: cachedLeaderboard
-      });
-      return;
-    }
-
-    // Generate new leaderboard
-    const leaderboard = await AnalyticsService.generateLeaderboard(criteria, limitNumber);
-
-    logger.info('Leaderboard generated:', {
-      type: leaderboardType,
-      participants: leaderboard.metadata.totalParticipants,
+    logger.info('Enhanced leaderboard generated:', {
+      type,
       grade,
-      subject
+      subject,
+      timeframe,
+      participants: leaderboard.metadata.totalParticipants,
+      cached: leaderboard.metadata.isCached
     });
 
     res.status(200).json({
@@ -66,7 +78,7 @@ export const getUserRank = async (req: AuthRequest, res: Response): Promise<void
       throw new BadRequestError('User not authenticated');
     }
 
-    const userId = req.user._id;
+    const userId = new Types.ObjectId(req.user._id);
     const { grade, subject, timeframe } = req.query;
 
     const criteria: LeaderboardCriteria = {

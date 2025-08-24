@@ -43,11 +43,13 @@ export interface TopicWiseStats {
 }
 
 export interface LeaderboardCriteria {
+  type?: string;
   grade?: number;
   subject?: string;
-  timeframe: 'all_time' | 'monthly' | 'weekly';
+  timeframe: 'all_time' | 'monthly' | 'weekly' | 'daily';
   month?: number;
   year?: number;
+  sortBy?: string;
 }
 
 export interface LeaderboardRanking {
@@ -57,10 +59,41 @@ export interface LeaderboardRanking {
   score: number;
   totalQuizzes: number;
   lastAttemptDate: Date;
+  averageScore: number;
+  bestScore: number;
+  grade?: number;
+  subject?: string;
+  consistency?: number;
+  badge?: string;
+  isCurrentUser?: boolean;
 }
 
 export interface LeaderboardMetadata {
   totalParticipants: number;
   lastUpdated: Date;
   cacheExpiry: Date;
+  isCached?: boolean;
+  generationTime?: number;
+  criteria: LeaderboardCriteria;
+}
+
+export interface EnhancedLeaderboard {
+  type: string;
+  criteria: LeaderboardCriteria;
+  rankings: LeaderboardRanking[];
+  metadata: LeaderboardMetadata;
+  userContext?: {
+    userRank: number;
+    userScore: number;
+    rankingTrend: 'up' | 'down' | 'stable' | 'new';
+    nearbyRankings: LeaderboardRanking[];
+  };
+  statistics: {
+    averageScore: number;
+    medianScore: number;
+    topScore: number;
+    participationRate: number;
+    gradeDistribution?: Record<string, number>;
+    subjectDistribution?: Record<string, number>;
+  };
 }

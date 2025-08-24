@@ -64,31 +64,35 @@ export const updatePerformanceSchema = {
 
 export const leaderboardSchema = {
   query: Joi.object({
-    type: Joi.string().valid('overall', 'grade_subject', 'monthly').default(
+    type: Joi.string().valid('overall', 'grade', 'subject', 'grade_subject').default(
         'overall').messages({
-      'any.only': 'Type must be overall, grade_subject, or monthly',
+      'any.only': 'Type must be overall, grade, subject, or grade_subject',
     }),
 
     grade: Joi.number().integer().min(1).max(12).when('type', {
-      is: 'grade_subject', then: Joi.required(), otherwise: Joi.optional(),
+      is: Joi.valid('grade', 'grade_subject'), 
+      then: Joi.required(), 
+      otherwise: Joi.optional(),
     }).messages({
       'number.base': 'Grade must be a number',
       'number.integer': 'Grade must be an integer',
       'number.min': 'Grade must be at least 1',
       'number.max': 'Grade cannot exceed 12',
-      'any.required': 'Grade is required for grade_subject leaderboard',
+      'any.required': 'Grade is required for grade or grade_subject leaderboard',
     }),
 
     subject: Joi.string().trim().max(100).when('type', {
-      is: 'grade_subject', then: Joi.required(), otherwise: Joi.optional(),
+      is: Joi.valid('subject', 'grade_subject'), 
+      then: Joi.required(), 
+      otherwise: Joi.optional(),
     }).messages({
       'string.max': 'Subject cannot exceed 100 characters',
-      'any.required': 'Subject is required for grade_subject leaderboard',
+      'any.required': 'Subject is required for subject or grade_subject leaderboard',
     }),
 
-    timeframe: Joi.string().valid('all_time', 'monthly', 'weekly').default(
+    timeframe: Joi.string().valid('all_time', 'monthly', 'weekly', 'daily').default(
         'all_time').messages({
-      'any.only': 'Timeframe must be all_time, monthly, or weekly',
+      'any.only': 'Timeframe must be all_time, monthly, weekly, or daily',
     }),
 
     month: Joi.number().integer().min(1).max(12).when('timeframe', {
@@ -114,6 +118,14 @@ export const leaderboardSchema = {
       'number.integer': 'Limit must be an integer',
       'number.min': 'Limit must be at least 1',
       'number.max': 'Limit cannot exceed 100',
+    }),
+
+    includeUser: Joi.string().valid('true', 'false').default('false').messages({
+      'any.only': 'includeUser must be true or false',
+    }),
+
+    sortBy: Joi.string().valid('score', 'average', 'consistency', 'quizzes').default('score').messages({
+      'any.only': 'sortBy must be score, average, consistency, or quizzes',
     }),
   }),
 };
