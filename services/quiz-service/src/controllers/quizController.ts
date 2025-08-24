@@ -782,8 +782,19 @@ export const submitQuiz = async (
       }
 
       res.status(201).json({
-        success: true, message: 'Quiz submitted successfully', data: {
-          ...submissionData, emailSent: sendAnalyticsToEmail,
+        success: true, 
+        message: 'Quiz submitted successfully', 
+        data: {
+          ...submissionData, 
+          emailSent: sendAnalyticsToEmail,
+          // Highlight improvement suggestions prominently
+          improvementTips: {
+            count: submissionData.results.suggestions?.length || 0,
+            tips: submissionData.results.suggestions || [],
+            message: submissionData.results.suggestions?.length > 0 
+              ? "Based on your answers, here are specific areas to focus on for improvement:"
+              : "Great job! Keep practicing to maintain your performance level."
+          }
         },
       });
 
@@ -917,5 +928,271 @@ export const getQuizHistory = async (
 
   } catch (error) {
     handleError(res, 'getQuizHistory', error as Error);
+  }
+};
+
+export const getSubmissionSuggestions = async (
+    req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      throw new UnauthorizedError('User not authenticated');
+    }
+
+    const { submissionId } = req.params;
+
+    // Validate submission ID format
+    if (!submissionId || !/^[0-9a-fA-F]{24}$/.test(submissionId)) {
+      throw new BadRequestError('Invalid submission ID format');
+    }
+
+    // Get submission details from submission service
+    try {
+      const submissionServiceClient = getSubmissionServiceClient();
+      const submissionResponse = await submissionServiceClient.get<{
+        success: boolean;
+        data: {
+          submission: any;
+          quiz: any;
+        };
+      }>(`/api/submission/${submissionId}/details`, {
+        headers: { Authorization: req.headers.authorization as string }
+      });
+
+      if (!submissionResponse.success || !submissionResponse.data) {
+        throw new NotFoundError('Submission not found');
+      }
+
+      const { submission, quiz } = submissionResponse.data;
+
+      // Check if user owns this submission
+      if (submission.userId !== req.userId?.toString()) {
+        throw new UnauthorizedError('Access denied to this submission');
+      }
+
+      const aiEvaluation = submission.aiEvaluation;
+
+      if (!aiEvaluation || !aiEvaluation.suggestions) {
+        res.status(200).json({
+          success: true,
+          message: 'No AI evaluation available for this submission',
+          data: {
+            submissionId,
+            hasEvaluation: false,
+            improvementTips: {
+              count: 0,
+              tips: [],
+              message: "AI evaluation was not performed for this submission."
+            }
+          }
+        });
+        return;
+      }
+
+      // Format the response with detailed suggestions
+      const formattedSuggestions = {
+        submissionId,
+        quizTitle: quiz.title,
+        score: submission.scoring.scorePercentage,
+        grade: submission.scoring.grade,
+        completedAt: submission.timing.submittedAt,
+        hasEvaluation: true,
+        improvementTips: {
+          count: aiEvaluation.suggestions.length,
+          tips: aiEvaluation.suggestions,
+          message: "Based on your quiz performance, here are specific recommendations for improvement:"
+        },
+        analysis: {
+          strengths: aiEvaluation.strengths || [],
+          weaknesses: aiEvaluation.weaknesses || [],
+          model: aiEvaluation.model,
+          evaluatedAt: aiEvaluation.evaluatedAt
+        },
+        performance: {
+          totalQuestions: submission.scoring.totalQuestions,
+          correctAnswers: submission.scoring.correctAnswers,
+          timeSpent: submission.timing.totalTimeSpent,
+          attemptNumber: submission.attemptNumber
+        }
+      };
+
+      logger.info('Submission suggestions retrieved:', {
+        userId: req.userId,
+        submissionId,
+        hasSuggestions: aiEvaluation.suggestions.length > 0
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Improvement suggestions retrieved successfully',
+        data: formattedSuggestions
+      });
+
+    } catch (submissionError) {
+      logger.error('Submission service error for suggestions:', {
+        error: submissionError,
+        submissionId,
+        userId: req.userId
+      });
+      
+      if (submissionError.message?.includes('not found')) {
+        throw new NotFoundError('Submission not found');
+      }
+      
+      throw new Error('Failed to retrieve improvement suggestions. Please try again later.');
+    }
+
+  } catch (error) {
+    handleError(res, 'getSubmissionSuggestions', error as Error);
+  }
+};
+
+export const getPersonalizedSuggestions = async (
+    req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      throw new UnauthorizedError('User not authenticated');
+    }
+
+    // Get recent submissions to analyze patterns
+    try {
+      const submissionServiceClient = getSubmissionServiceClient();
+      const recentSubmissionsResponse = await submissionServiceClient.get<{
+        success: boolean;
+        data: {
+          submissions: any[];
+        };
+      }>('/api/submission', {
+        params: {
+          limit: 10,
+          sortBy: 'timing.submittedAt',
+          sortOrder: 'desc'
+        },
+        headers: { Authorization: req.headers.authorization as string }
+      });
+
+      if (!recentSubmissionsResponse.success || !recentSubmissionsResponse.data) {
+        throw new Error('Failed to retrieve recent submissions');
+      }
+
+      const recentSubmissions = recentSubmissionsResponse.data.submissions;
+
+      if (recentSubmissions.length === 0) {
+        res.status(200).json({
+          success: true,
+          message: 'No quiz history available for personalized suggestions',
+          data: {
+            hasHistory: false,
+            message: "Take some quizzes to get personalized improvement suggestions!",
+            improvementTips: {
+              count: 0,
+              tips: [],
+              message: "Complete quizzes to receive AI-powered improvement suggestions."
+            }
+          }
+        });
+        return;
+      }
+
+      // Analyze recent performance for patterns
+      const submissionsWithEvaluation = recentSubmissions.filter(s => s.aiEvaluation);
+      
+      if (submissionsWithEvaluation.length === 0) {
+        res.status(200).json({
+          success: true,
+          message: 'No AI evaluations available for analysis',
+          data: {
+            hasHistory: true,
+            hasEvaluations: false,
+            recentQuizzes: recentSubmissions.length,
+            message: "AI evaluation is available for recent quizzes. Enable evaluation to get improvement suggestions.",
+            improvementTips: {
+              count: 0,
+              tips: [],
+              message: "Enable AI evaluation in your quiz submissions to get personalized improvement suggestions."
+            }
+          }
+        });
+        return;
+      }
+
+      // Compile suggestions from recent evaluations
+      const allSuggestions = submissionsWithEvaluation
+        .flatMap(s => s.aiEvaluation?.suggestions || []);
+      
+      const allWeaknesses = submissionsWithEvaluation
+        .flatMap(s => s.aiEvaluation?.weaknesses || []);
+      
+      const allStrengths = submissionsWithEvaluation
+        .flatMap(s => s.aiEvaluation?.strengths || []);
+
+      // Calculate average performance
+      const avgScore = recentSubmissions.reduce((sum, s) => sum + s.scoring.scorePercentage, 0) / recentSubmissions.length;
+      
+      // Find common patterns in suggestions
+      const suggestionCounts = allSuggestions.reduce((acc, suggestion) => {
+        const key = suggestion.toLowerCase();
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      // Get top recurring suggestions
+      const topSuggestions = Object.entries(suggestionCounts)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 3)
+        .map(([suggestion, count]) => ({
+          suggestion: allSuggestions.find(s => s.toLowerCase() === suggestion) || suggestion,
+          frequency: count
+        }));
+
+      logger.info('Personalized suggestions generated:', {
+        userId: req.userId,
+        recentQuizzes: recentSubmissions.length,
+        withEvaluations: submissionsWithEvaluation.length,
+        avgScore: Math.round(avgScore)
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Personalized improvement suggestions generated successfully',
+        data: {
+          hasHistory: true,
+          hasEvaluations: true,
+          analysis: {
+            recentQuizzes: recentSubmissions.length,
+            quizzesWithEvaluation: submissionsWithEvaluation.length,
+            averageScore: Math.round(avgScore * 100) / 100,
+            performanceLevel: avgScore >= 80 ? 'Excellent' : avgScore >= 60 ? 'Good' : 'Needs Improvement'
+          },
+          improvementTips: {
+            count: topSuggestions.length,
+            tips: topSuggestions.map(t => t.suggestion),
+            message: "Based on your recent quiz performance, here are the most important areas to focus on:",
+            patterns: topSuggestions.map(t => ({
+              tip: t.suggestion,
+              appearedIn: `${t.frequency} recent quiz${t.frequency > 1 ? 'es' : ''}`
+            }))
+          },
+          overallFeedback: {
+            strengths: [...new Set(allStrengths)].slice(0, 3),
+            weaknesses: [...new Set(allWeaknesses)].slice(0, 3),
+            suggestion: avgScore >= 80 
+              ? "Keep up the excellent work! Continue practicing to maintain your high performance."
+              : avgScore >= 60 
+              ? "Good progress! Focus on the specific areas mentioned to improve further."
+              : "Consider reviewing fundamental concepts and practicing more regularly."
+          }
+        }
+      });
+
+    } catch (submissionError) {
+      logger.error('Submission service error for personalized suggestions:', {
+        error: submissionError,
+        userId: req.userId
+      });
+      throw new Error('Failed to generate personalized suggestions. Please try again later.');
+    }
+
+  } catch (error) {
+    handleError(res, 'getPersonalizedSuggestions', error as Error);
   }
 };

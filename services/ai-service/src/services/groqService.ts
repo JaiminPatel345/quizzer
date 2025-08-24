@@ -251,8 +251,28 @@ class GroqService {
       let cleaned = content.replace(/``````/g, '').trim();
       const evaluation = JSON.parse(cleaned);
 
+      // Ensure exactly 2 suggestions as per requirements
+      if (evaluation.suggestions && evaluation.suggestions.length !== 2) {
+        if (evaluation.suggestions.length > 2) {
+          evaluation.suggestions = evaluation.suggestions.slice(0, 2);
+        } else if (evaluation.suggestions.length < 2) {
+          // Add generic suggestion if needed
+          const generic = "Review the incorrect answers and practice similar questions to improve understanding.";
+          while (evaluation.suggestions.length < 2) {
+            evaluation.suggestions.push(generic);
+          }
+        }
+      } else if (!evaluation.suggestions) {
+        evaluation.suggestions = [
+          "Review the areas where you made mistakes and practice similar questions.",
+          "Focus on understanding the underlying concepts rather than memorizing answers."
+        ];
+      }
+
       logger.info('Evaluation completed successfully with Groq', {
-        processingTime, model: this.getAvailableModel(),
+        processingTime, 
+        model: this.getAvailableModel(),
+        suggestionsCount: evaluation.suggestions?.length || 0
       });
 
       return evaluation;
@@ -343,21 +363,75 @@ Generate ${params.totalQuestions} ORIGINAL questions now:`;
   private buildEvaluationPrompt(
       questions: QuizQuestion[], answers: SubmissionAnswer[]): string {
     const wrongAnswers = answers.filter(answer => !answer.isCorrect);
+    const correctAnswers = answers.filter(answer => answer.isCorrect);
+    
+    // Build detailed analysis of wrong answers
+    const wrongAnswerDetails = wrongAnswers.map(answer => {
+      const question = questions.find(q => q.questionId === answer.questionId);
+      return {
+        questionText: question?.questionText,
+        topic: question?.topic,
+        difficulty: question?.difficulty,
+        correctAnswer: question?.correctAnswer,
+        userAnswer: answer.userAnswer,
+        explanation: question?.explanation
+      };
+    }).filter(detail => detail.questionText);
 
-    return `Analyze this quiz performance and provide feedback:
+    // Build analysis of correct answers for strengths
+    const correctAnswerDetails = correctAnswers.map(answer => {
+      const question = questions.find(q => q.questionId === answer.questionId);
+      return {
+        topic: question?.topic,
+        difficulty: question?.difficulty
+      };
+    }).filter(detail => detail.topic);
 
-Quiz Results:
+    const wrongAnswersText = wrongAnswerDetails.length > 0 ? 
+      wrongAnswerDetails.map((detail, index) => 
+        `Wrong Answer ${index + 1}:
+        Question: ${detail.questionText}
+        Topic: ${detail.topic}
+        Difficulty: ${detail.difficulty}
+        Correct Answer: ${detail.correctAnswer}
+        Your Answer: ${detail.userAnswer}
+        Explanation: ${detail.explanation || 'N/A'}`
+      ).join('\n\n') : 'No wrong answers';
+
+    return `Analyze this quiz performance and provide targeted feedback based on specific mistakes:
+
+QUIZ PERFORMANCE SUMMARY:
 - Total Questions: ${questions.length}
-- Correct Answers: ${answers.filter(a => a.isCorrect).length}
+- Correct Answers: ${correctAnswers.length}
 - Wrong Answers: ${wrongAnswers.length}
+- Score: ${Math.round((correctAnswers.length / questions.length) * 100)}%
 
-Provide exactly 2 specific improvement suggestions and identify strengths/weaknesses.
+DETAILED WRONG ANSWERS ANALYSIS:
+${wrongAnswersText}
 
-Return ONLY this JSON structure:
+CORRECT ANSWERS TOPICS:
+${correctAnswerDetails.map(detail => `${detail.topic} (${detail.difficulty})`).join(', ') || 'None'}
+
+INSTRUCTIONS:
+1. Provide EXACTLY 2 specific, actionable improvement tips based on the actual wrong answers and topics where the student struggled
+2. Identify strengths based on correct answers and topics mastered
+3. Identify weaknesses based on wrong answers and knowledge gaps
+4. Make suggestions specific to the subject matter and learning areas shown in the mistakes
+
+Return ONLY this JSON structure with NO markdown formatting:
 {
-  "suggestions": ["specific tip 1", "specific tip 2"],
-  "strengths": ["strength1", "strength2"],
-  "weaknesses": ["weakness1", "weakness2"]
+  "suggestions": [
+    "First specific improvement tip based on actual mistakes made",
+    "Second specific improvement tip based on patterns in wrong answers"
+  ],
+  "strengths": [
+    "Specific strength based on correct answers",
+    "Another strength shown in performance"
+  ],
+  "weaknesses": [
+    "Specific weakness based on wrong answers",
+    "Another area needing improvement"
+  ]
 }`;
   }
 }

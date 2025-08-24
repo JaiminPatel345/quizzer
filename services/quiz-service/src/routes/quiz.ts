@@ -11,6 +11,8 @@ import {
   updateQuestionHints,
   updateQuiz,
   getQuizHistory,
+  getSubmissionSuggestions,
+  getPersonalizedSuggestions,
 } from '../controllers/quizController.js';
 import {authenticateToken} from '../middleware/auth.js';
 import {quizLimiter} from '../middleware/rateLimiter.js';
@@ -117,6 +119,20 @@ router.get('/history',
     quizLimiter,
     validateRequest(getQuizHistorySchema),
     getQuizHistory,
+);
+
+// Get improvement suggestions for a specific submission
+router.get('/submission/:submissionId/suggestions',
+    authenticateToken,
+    quizLimiter,
+    getSubmissionSuggestions,
+);
+
+// Get personalized improvement suggestions based on recent performance
+router.get('/suggestions',
+    authenticateToken,
+    quizLimiter,
+    getPersonalizedSuggestions,
 );
 
 export default router;
