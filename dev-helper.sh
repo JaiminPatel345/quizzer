@@ -39,7 +39,7 @@ check_env_file() {
 # Function to build all services
 build_services() {
     print_status "Building all services..."
-    docker-compose build --no-cache
+    docker compose build --no-cache
     print_success "All services built successfully!"
 }
 
@@ -53,13 +53,13 @@ start_services() {
     sleep 5
 
     # Show service status
-    docker-compose ps
+    docker compose ps
 }
 
 # Function to stop services
 stop_services() {
     print_status "Stopping all services..."
-    docker-compose down
+    docker compose down
     print_success "All services stopped!"
 }
 
@@ -67,10 +67,10 @@ stop_services() {
 view_logs() {
     if [ -z "$1" ]; then
         print_status "Showing logs for all services..."
-        docker-compose logs -f
+        docker compose logs -f
     else
         print_status "Showing logs for $1..."
-        docker-compose logs -f "$1"
+        docker compose logs -f "$1"
     fi
 }
 
@@ -82,7 +82,7 @@ restart_service() {
     fi
 
     print_status "Restarting $1..."
-    docker-compose restart "$1"
+    docker compose restart "$1"
     print_success "$1 restarted successfully!"
 }
 
@@ -93,7 +93,7 @@ cleanup() {
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         print_status "Cleaning up..."
-        docker-compose down -v --remove-orphans
+        docker compose down -v --remove-orphans
         docker system prune -f
         print_success "Cleanup completed!"
     fi
@@ -169,7 +169,7 @@ case "${1:-help}" in
         cleanup
         ;;
     "status")
-        docker-compose ps
+        docker compose ps
         ;;
     *)
         echo "Local Development Helper for Quizzer Platform"

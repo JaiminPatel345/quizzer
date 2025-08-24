@@ -174,7 +174,7 @@ jobs:
                   --registry-password "$REGISTRY_PASS" \
                   --target-port $PORT \
                   --ingress external \
-                  --set-env-vars $ENV_PLAIN $ENV_SECRET_REFS
+                  --env-vars $ENV_PLAIN $ENV_SECRET_REFS
               else
                 az containerapp create \
                   -n "$APP_NAME" -g "$RG" \
@@ -187,7 +187,7 @@ jobs:
                   --ingress external \
                   --min-replicas 0 --max-replicas 1 \
                   --secrets $SECRETS \
-                  --set-env-vars $ENV_PLAIN $ENV_SECRET_REFS
+                  --env-vars $ENV_PLAIN $ENV_SECRET_REFS
               fi
             }
 
