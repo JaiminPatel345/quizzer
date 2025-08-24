@@ -2,7 +2,7 @@ name: ci-cd-azure-container-apps
 
 on:
   push:
-    branches: [ main ]
+    branches: [ microservices ]
   workflow_dispatch:
 
 permissions:
@@ -154,9 +154,9 @@ jobs:
               APP_NAME=$1
               IMAGE=$2
               PORT=$3
-              SECRETS=$4           # format: k1='v1' k2='v2'
-              ENV_PLAIN=$5         # format: KEY=VALUE KEY2=VALUE2
-              ENV_SECRET_REFS=$6   # format: KEY=secretref:name KEY2=secretref:name
+              SECRETS=$4           # k1='v1' k2='v2'
+              ENV_PLAIN=$5         # KEY=VALUE KEY2=VALUE2
+              ENV_SECRET_REFS=$6   # KEY=secretref:name KEY2=secretref:name
 
               if az containerapp show -n "$APP_NAME" -g "$RG" >/dev/null 2>&1; then
                 # Update secrets first
