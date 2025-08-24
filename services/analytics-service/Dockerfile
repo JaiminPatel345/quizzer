@@ -1,67 +1,57 @@
 # Analytics Service Dockerfile - Optimized Multi-stage build
-FROM node:20-alpine AS dependencies
-
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+FROM node:18-alpine AS builder
 
 # Set working directory
-WORKDIR /app
-
-# Copy package files for better layer caching
-COPY package*.json ./
-COPY tsconfig.json ./
-
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
-
-# Build stage
-FROM node:20-alpine AS builder
-
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Install all dependencies (including dev dependencies for build)
-RUN npm ci && npm cache clean --force
+# Install dependencies (including dev dependencies for build)
+RUN npm ci --only=production=false
 
 # Copy source code
 COPY src/ ./src/
 
-# Build the application
+# Build TypeScript to JavaScript
 RUN npm run build
 
 # Production stage
-FROM node:20-alpine AS production
+FROM node:18-alpine AS production
 
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
 
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodeuser -u 1001
+
 # Set working directory
 WORKDIR /app
 
-# Create non-root user first
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+# Copy package files
+COPY package*.json ./
 
-# Copy production dependencies from dependencies stage
-COPY --from=dependencies --chown=nodejs:nodejs /app/node_modules ./node_modules
+# Install only production dependencies
+RUN npm ci --only=production && npm cache clean --force
 
 # Copy built application from builder stage
-COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
+COPY --from=builder /app/dist ./dist
 
-# Copy package.json for metadata
-COPY --chown=nodejs:nodejs package*.json ./
+# Create logs directory
+RUN mkdir -p logs && chown -R nodeuser:nodejs /app
 
 # Switch to non-root user
-USER nodejs
+USER nodeuser
 
 # Expose port
-EXPOSE 3005
+EXPOSE 3004
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3005/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"
+  CMD node -e "require('http').get('http://localhost:3004/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
-# Start the application with dumb-init
-CMD ["dumb-init", "node", "dist/index.js"]
+# Start the application
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "dist/index.js"]

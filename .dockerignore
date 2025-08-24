@@ -6,6 +6,8 @@ README.md
 .env
 .nyc_output
 coverage
+.nyc_output
+.coverage
 *.md
 .DS_Store
 .vscode
