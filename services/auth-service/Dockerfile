@@ -14,7 +14,9 @@ COPY services/submission-service/package.json services/submission-service/tsconf
 COPY services/analytics-service/package.json services/analytics-service/tsconfig.json ./services/analytics-service/
 
 # Install deps using yarn workspaces
-RUN npm i -g yarn@1.22.22 \
+RUN corepack enable \
+  && corepack prepare yarn@1.22.22 --activate \
+  && yarn --version \
   && yarn install --frozen-lockfile
 
 # Copy source for this service and build
@@ -33,7 +35,8 @@ WORKDIR /app
 COPY services/auth-service/package.json ./package.json
 COPY yarn.lock ./yarn.lock
 
-RUN npm i -g yarn@1.22.22 \
+RUN corepack enable \
+  && corepack prepare yarn@1.22.22 --activate \
   && (yarn install --production --frozen-lockfile || yarn install --production) \
   && yarn cache clean
 

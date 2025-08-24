@@ -15,7 +15,9 @@ COPY services/submission-service/package.json services/submission-service/tsconf
 COPY services/analytics-service/package.json services/analytics-service/tsconfig.json ./services/analytics-service/
 
 # Install yarn v1 and dependencies using the root lockfile
-RUN npm i -g yarn@1.22.22 \
+RUN corepack enable \
+  && corepack prepare yarn@1.22.22 --activate \
+  && yarn --version \
   && yarn install --frozen-lockfile
 
 # Copy only this service's source and build it via workspace script
@@ -39,7 +41,8 @@ COPY services/ai-service/package.json ./package.json
 COPY yarn.lock ./yarn.lock
 
 # Install only production deps; fall back if frozen lock cannot be satisfied
-RUN npm i -g yarn@1.22.22 \
+RUN corepack enable \
+  && corepack prepare yarn@1.22.22 --activate \
   && (yarn install --production --frozen-lockfile || yarn install --production) \
   && yarn cache clean
 
