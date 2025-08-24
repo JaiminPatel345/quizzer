@@ -33,40 +33,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate .env files for all services (for parity; runtime uses env vars)
-        shell: bash
-        run: |
-          set -e
-          mkdir -p services/auth-service services/quiz-service services/ai-service services/submission-service services/analytics-service
-          cat > services/auth-service/.env <<'EOF'
-          NODE_ENV=production
-          AUTH_SERVICE_PORT=3001
-          MONGODB_URI=${{ secrets.MONGODB_URI }}
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          EOF
-          cat > services/quiz-service/.env <<'EOF'
-          NODE_ENV=production
-          QUIZ_SERVICE_PORT=3002
-          MONGODB_URI=${{ secrets.MONGODB_URI }}
-          EOF
-          cat > services/ai-service/.env <<'EOF'
-          NODE_ENV=production
-          AI_SERVICE_PORT=3003
-          MONGODB_URI=${{ secrets.MONGODB_URI }}
-          GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
-          GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
-          EOF
-          cat > services/submission-service/.env <<'EOF'
-          NODE_ENV=production
-          SUBMISSION_SERVICE_PORT=3004
-          MONGODB_URI=${{ secrets.MONGODB_URI }}
-          EOF
-          cat > services/analytics-service/.env <<'EOF'
-          NODE_ENV=production
-          ANALYTICS_SERVICE_PORT=3005
-          MONGODB_URI=${{ secrets.MONGODB_URI }}
-          EOF
-
       - name: Build and push auth-service
         uses: docker/build-push-action@v5
         with:
@@ -149,6 +115,9 @@ jobs:
         with:
           inlineScript: |
             set -e
+            # Ensure extension available in this step's container too
+            az extension add --name containerapp --upgrade
+
             REGISTRY_SERVER=ghcr.io
             REGISTRY_USER=${{ secrets.GHCR_USERNAME }}
             REGISTRY_PASS='${{ secrets.GHCR_TOKEN }}'
@@ -160,17 +129,41 @@ jobs:
             GEMINI_API_KEY='${{ secrets.GEMINI_API_KEY }}'
             GROQ_API_KEY='${{ secrets.GROQ_API_KEY }}'
 
+            # Helpers to build arrays safely
+            add_secret() { # usage: add_secret ARR_NAME key value
+              local -n arr=$1
+              local key=$2
+              local val=$3
+              if [ -n "$val" ]; then
+                arr+=("${key}=${val}")
+              fi
+            }
+            add_envref() { # usage: add_envref ARR_NAME envKey secretName valueToCheck
+              local -n arr=$1
+              local envKey=$2
+              local secretName=$3
+              local val=$4
+              if [ -n "$val" ]; then
+                arr+=("${envKey}=secretref:${secretName}")
+              fi
+            }
+
             upsert_app() {
-              APP_NAME=$1
-              IMAGE=$2
-              PORT=$3
-              SECRETS=$4           # k1='v1' k2='v2'
-              ENV_PLAIN=$5         # KEY=VALUE KEY2=VALUE2
-              ENV_SECRET_REFS=$6   # KEY=secretref:name KEY2=secretref:name
+              local APP_NAME=$1
+              local IMAGE=$2
+              local PORT=$3
+              local SECRETS_ARR_NAME=$4
+              local ENV_PLAIN_ARR_NAME=$5
+              local ENV_SECRET_REFS_ARR_NAME=$6
+
+              # Name references for arrays
+              local -n SECRETS_ARR=$SECRETS_ARR_NAME
+              local -n ENV_PLAIN_ARR=$ENV_PLAIN_ARR_NAME
+              local -n ENV_SECRET_REFS_ARR=$ENV_SECRET_REFS_ARR_NAME
 
               if az containerapp show -n "$APP_NAME" -g "$RG" >/dev/null 2>&1; then
-                if [ -n "$SECRETS" ]; then
-                  az containerapp secret set -n "$APP_NAME" -g "$RG" --secrets $SECRETS
+                if [ ${#SECRETS_ARR[@]} -gt 0 ]; then
+                  az containerapp secret set -n "$APP_NAME" -g "$RG" --secrets "${SECRETS_ARR[@]}"
                 fi
                 az containerapp update \
                   -n "$APP_NAME" -g "$RG" \
@@ -180,11 +173,12 @@ jobs:
                   --registry-password "$REGISTRY_PASS" \
                   --target-port $PORT \
                   --ingress external \
-                  --env-vars $ENV_PLAIN $ENV_SECRET_REFS
+                  --env-vars "${ENV_PLAIN_ARR[@]}" "${ENV_SECRET_REFS_ARR[@]}"
               else
-                SECRETS_ARG=""
-                if [ -n "$SECRETS" ]; then
-                  SECRETS_ARG="--secrets $SECRETS"
+                # Build optional secrets args
+                SECRETS_ARGS=()
+                if [ ${#SECRETS_ARR[@]} -gt 0 ]; then
+                  SECRETS_ARGS=( --secrets "${SECRETS_ARR[@]}" )
                 fi
                 az containerapp create \
                   -n "$APP_NAME" -g "$RG" \
@@ -196,110 +190,83 @@ jobs:
                   --target-port $PORT \
                   --ingress external \
                   --min-replicas 0 --max-replicas 1 \
-                  $SECRETS_ARG \
-                  --env-vars $ENV_PLAIN $ENV_SECRET_REFS
+                  "${SECRETS_ARGS[@]}" \
+                  --env-vars "${ENV_PLAIN_ARR[@]}" "${ENV_SECRET_REFS_ARR[@]}"
               fi
             }
 
-            # Build secret strings only when values exist
-            build_secrets_auth() {
-              s=""
-              [ -n "$MONGODB_URI" ] && s="$s mongodb-uri='$MONGODB_URI'"
-              [ -n "$JWT_SECRET" ] && s="$s jwt-secret='$JWT_SECRET'"
-              echo "${s# }"
-            }
-            build_envrefs_auth() {
-              r=""
-              [ -n "$MONGODB_URI" ] && r="$r MONGODB_URI=secretref:mongodb-uri"
-              [ -n "$JWT_SECRET" ] && r="$r JWT_SECRET=secretref:jwt-secret"
-              echo "${r# }"
-            }
-            build_secrets_quiz() {
-              s=""
-              [ -n "$MONGODB_URI" ] && s="$s mongodb-uri='$MONGODB_URI'"
-              echo "${s# }"
-            }
-            build_envrefs_quiz() {
-              r=""
-              [ -n "$MONGODB_URI" ] && r="$r MONGODB_URI=secretref:mongodb-uri"
-              echo "${r# }"
-            }
-            build_secrets_ai() {
-              s=""
-              [ -n "$MONGODB_URI" ] && s="$s mongodb-uri='$MONGODB_URI'"
-              [ -n "$GEMINI_API_KEY" ] && s="$s gemini-api-key='$GEMINI_API_KEY'"
-              [ -n "$GROQ_API_KEY" ] && s="$s groq-api-key='$GROQ_API_KEY'"
-              echo "${s# }"
-            }
-            build_envrefs_ai() {
-              r=""
-              [ -n "$MONGODB_URI" ] && r="$r MONGODB_URI=secretref:mongodb-uri"
-              [ -n "$GEMINI_API_KEY" ] && r="$r GEMINI_API_KEY=secretref:gemini-api-key"
-              [ -n "$GROQ_API_KEY" ] && r="$r GROQ_API_KEY=secretref:groq-api-key"
-              echo "${r# }"
-            }
-            build_secrets_submission() {
-              s=""
-              [ -n "$MONGODB_URI" ] && s="$s mongodb-uri='$MONGODB_URI'"
-              echo "${s# }"
-            }
-            build_envrefs_submission() {
-              r=""
-              [ -n "$MONGODB_URI" ] && r="$r MONGODB_URI=secretref:mongodb-uri"
-              echo "${r# }"
-            }
-            build_secrets_analytics() {
-              s=""
-              [ -n "$MONGODB_URI" ] && s="$s mongodb-uri='$MONGODB_URI'"
-              echo "${s# }"
-            }
-            build_envrefs_analytics() {
-              r=""
-              [ -n "$MONGODB_URI" ] && r="$r MONGODB_URI=secretref:mongodb-uri"
-              echo "${r# }"
-            }
-
             # auth-service
+            AUTH_SECRETS=()
+            add_secret AUTH_SECRETS mongodb-uri "$MONGODB_URI"
+            add_secret AUTH_SECRETS jwt-secret "$JWT_SECRET"
+            AUTH_ENV=("NODE_ENV=production" "AUTH_SERVICE_PORT=3001")
+            AUTH_ENVREFS=()
+            add_envref AUTH_ENVREFS MONGODB_URI mongodb-uri "$MONGODB_URI"
+            add_envref AUTH_ENVREFS JWT_SECRET jwt-secret "$JWT_SECRET"
             upsert_app \
               quizzer-auth-service \
               ghcr.io/$OWNER_LC/quizzer-auth-service:${{ github.sha }} \
               3001 \
-              "$(build_secrets_auth)" \
-              "NODE_ENV=production AUTH_SERVICE_PORT=3001" \
-              "$(build_envrefs_auth)"
+              AUTH_SECRETS \
+              AUTH_ENV \
+              AUTH_ENVREFS
 
             # quiz-service
+            QUIZ_SECRETS=()
+            add_secret QUIZ_SECRETS mongodb-uri "$MONGODB_URI"
+            QUIZ_ENV=("NODE_ENV=production" "QUIZ_SERVICE_PORT=3002")
+            QUIZ_ENVREFS=()
+            add_envref QUIZ_ENVREFS MONGODB_URI mongodb-uri "$MONGODB_URI"
             upsert_app \
               quizzer-quiz-service \
               ghcr.io/$OWNER_LC/quizzer-quiz-service:${{ github.sha }} \
               3002 \
-              "$(build_secrets_quiz)" \
-              "NODE_ENV=production QUIZ_SERVICE_PORT=3002" \
-              "$(build_envrefs_quiz)"
+              QUIZ_SECRETS \
+              QUIZ_ENV \
+              QUIZ_ENVREFS
 
             # ai-service
+            AI_SECRETS=()
+            add_secret AI_SECRETS mongodb-uri "$MONGODB_URI"
+            add_secret AI_SECRETS gemini-api-key "$GEMINI_API_KEY"
+            add_secret AI_SECRETS groq-api-key "$GROQ_API_KEY"
+            AI_ENV=("NODE_ENV=production" "AI_SERVICE_PORT=3003")
+            AI_ENVREFS=()
+            add_envref AI_ENVREFS MONGODB_URI mongodb-uri "$MONGODB_URI"
+            add_envref AI_ENVREFS GEMINI_API_KEY gemini-api-key "$GEMINI_API_KEY"
+            add_envref AI_ENVREFS GROQ_API_KEY groq-api-key "$GROQ_API_KEY"
             upsert_app \
               quizzer-ai-service \
               ghcr.io/$OWNER_LC/quizzer-ai-service:${{ github.sha }} \
               3003 \
-              "$(build_secrets_ai)" \
-              "NODE_ENV=production AI_SERVICE_PORT=3003" \
-              "$(build_envrefs_ai)"
+              AI_SECRETS \
+              AI_ENV \
+              AI_ENVREFS
 
             # submission-service
+            SUB_SECRETS=()
+            add_secret SUB_SECRETS mongodb-uri "$MONGODB_URI"
+            SUB_ENV=("NODE_ENV=production" "SUBMISSION_SERVICE_PORT=3004")
+            SUB_ENVREFS=()
+            add_envref SUB_ENVREFS MONGODB_URI mongodb-uri "$MONGODB_URI"
             upsert_app \
               quizzer-submission-service \
               ghcr.io/$OWNER_LC/quizzer-submission-service:${{ github.sha }} \
               3004 \
-              "$(build_secrets_submission)" \
-              "NODE_ENV=production SUBMISSION_SERVICE_PORT=3004" \
-              "$(build_envrefs_submission)"
+              SUB_SECRETS \
+              SUB_ENV \
+              SUB_ENVREFS
 
             # analytics-service
+            ANA_SECRETS=()
+            add_secret ANA_SECRETS mongodb-uri "$MONGODB_URI"
+            ANA_ENV=("NODE_ENV=production" "ANALYTICS_SERVICE_PORT=3005")
+            ANA_ENVREFS=()
+            add_envref ANA_ENVREFS MONGODB_URI mongodb-uri "$MONGODB_URI"
             upsert_app \
               quizzer-analytics-service \
               ghcr.io/$OWNER_LC/quizzer-analytics-service:${{ github.sha }} \
               3005 \
-              "$(build_secrets_analytics)" \
-              "NODE_ENV=production ANALYTICS_SERVICE_PORT=3005" \
-              "$(build_envrefs_analytics)"
+              ANA_SECRETS \
+              ANA_ENV \
+              ANA_ENVREFS
