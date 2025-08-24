@@ -228,89 +228,20 @@ export const createQuizSchema = {
 
 export const getQuizzesSchema = {
   query: Joi.object({
-    grade: Joi.number()
-    .integer()
-    .min(1)
-    .max(12)
-    .optional()
-    .messages({
-      'number.base': 'Grade must be a number',
-      'number.integer': 'Grade must be an integer',
-      'number.min': 'Grade must be at least 1',
-      'number.max': 'Grade cannot exceed 12'
-    }),
-
-    subject: Joi.string()
-    .trim()
-    .max(100)
-    .optional()
-    .messages({
-      'string.max': 'Subject cannot exceed 100 characters'
-    }),
-
-    difficulty: Joi.string()
-    .valid('easy', 'medium', 'hard', 'mixed')
-    .optional()
-    .messages({
-      'any.only': 'Difficulty must be easy, medium, hard, or mixed'
-    }),
-
-    category: Joi.string()
-    .trim()
-    .max(100)
-    .optional()
-    .messages({
-      'string.max': 'Category cannot exceed 100 characters'
-    }),
-
-    tags: Joi.string()
-    .trim()
-    .optional()
-    .messages({
-      'string.base': 'Tags must be a comma-separated string'
-    }),
-
-    isPublic: Joi.boolean()
-    .optional()
-    .messages({
-      'boolean.base': 'isPublic must be a boolean'
-    }),
-
-    page: Joi.number()
-    .integer()
-    .min(1)
-    .default(1)
-    .messages({
-      'number.base': 'Page must be a number',
-      'number.integer': 'Page must be an integer',
-      'number.min': 'Page must be at least 1'
-    }),
-
-    limit: Joi.number()
-    .integer()
-    .min(1)
-    .max(100)
-    .default(10)
-    .messages({
-      'number.base': 'Limit must be a number',
-      'number.integer': 'Limit must be an integer',
-      'number.min': 'Limit must be at least 1',
-      'number.max': 'Limit cannot exceed 100'
-    }),
-
-    sortBy: Joi.string()
-    .valid('createdAt', 'title', 'metadata.grade', 'metadata.subject')
-    .default('createdAt')
-    .messages({
-      'any.only': 'Sort by must be createdAt, title, metadata.grade, or metadata.subject'
-    }),
-
-    sortOrder: Joi.string()
-    .valid('asc', 'desc')
-    .default('desc')
-    .messages({
-      'any.only': 'Sort order must be asc or desc'
-    })
+    grade: Joi.number().integer().min(1).max(12).optional(),
+    subject: Joi.string().trim().max(100).optional(),
+    difficulty: Joi.string().valid('easy', 'medium', 'hard', 'mixed').optional(),
+    category: Joi.string().trim().max(100).optional(),
+    tags: Joi.string().optional(),
+    isPublic: Joi.boolean().optional(),
+    from: Joi.date().iso().optional(),
+    to: Joi.date().iso().min(Joi.ref('from')).optional(),
+    marks: Joi.number().min(0).max(100).optional(),
+    completedDate: Joi.date().iso().optional(),
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(100).default(10),
+    sortBy: Joi.string().valid('createdAt', 'title', 'metadata.grade', 'metadata.subject').default('createdAt'),
+    sortOrder: Joi.string().valid('asc', 'desc').default('desc'),
   })
 };
 
@@ -406,7 +337,22 @@ export const createAIQuizSchema = {
       subject: Joi.string().trim().min(2).max(100).required(),
       difficulty: Joi.string().valid('easy', 'medium', 'hard', 'mixed').required(),
       totalQuestions: Joi.number().integer().min(1).max(50).required(),
-      topics: Joi.array().items(Joi.string().trim().max(100)).optional()
+      topics: Joi.array().items(Joi.string().trim().max(100)).optional(),
+
+      // NEW: Adaptive generation flag
+      adaptiveGeneration: Joi.boolean().default(false),
+
+      // NEW: User performance data for adaptive generation
+      userPerformanceData: Joi.when('adaptiveGeneration', {
+        is: true,
+        then: Joi.object({
+          averageScore: Joi.number().min(0).max(100).required(),
+          totalQuizzes: Joi.number().integer().min(0).required(),
+          strongSubjects: Joi.array().items(Joi.string()).optional(),
+          weakSubjects: Joi.array().items(Joi.string()).optional()
+        }).required(),
+        otherwise: Joi.optional()
+      })
     }).required(),
 
     metadata: Joi.object({

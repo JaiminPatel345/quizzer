@@ -188,13 +188,57 @@ export const adaptiveQuestionsSchema = {
 export const generateHintSchema = {
   body: Joi.object({
     question: Joi.object({
-      questionId: Joi.string().required(),
-      questionText: Joi.string().min(10).max(1000).required(),
-      questionType: Joi.string().valid('mcq', 'true_false', 'short_answer').required(),
-      difficulty: Joi.string().valid('easy', 'medium', 'hard').required(),
-      topic: Joi.string().min(2).max(100).required(),
-      options: Joi.array().items(Joi.string()).optional(),
-      correctAnswer: Joi.string().optional()
+      questionId: Joi.string()
+        .trim()
+        .min(1)
+        .required()
+        .messages({
+          'string.min': 'Question ID cannot be empty',
+          'any.required': 'Question ID is required'
+        }),
+      questionText: Joi.string()
+        .trim()
+        .min(10)
+        .max(1000)
+        .required()
+        .messages({
+          'string.min': 'Question text must be at least 10 characters',
+          'string.max': 'Question text cannot exceed 1000 characters',
+          'any.required': 'Question text is required'
+        }),
+      questionType: Joi.string()
+        .valid('mcq', 'true_false', 'short_answer')
+        .required()
+        .messages({
+          'any.only': 'Question type must be mcq, true_false, or short_answer',
+          'any.required': 'Question type is required'
+        }),
+      difficulty: Joi.string()
+        .valid('easy', 'medium', 'hard')
+        .required()
+        .messages({
+          'any.only': 'Difficulty must be easy, medium, or hard',
+          'any.required': 'Difficulty is required'
+        }),
+      topic: Joi.string()
+        .trim()
+        .min(2)
+        .max(100)
+        .required()
+        .messages({
+          'string.min': 'Topic must be at least 2 characters',
+          'string.max': 'Topic cannot exceed 100 characters',
+          'any.required': 'Topic is required'
+        }),
+      options: Joi.array()
+        .items(Joi.string().trim().min(1))
+        .optional()
+        .messages({
+          'array.base': 'Options must be an array'
+        }),
+      correctAnswer: Joi.string()
+        .trim()
+        .optional()
     }).required()
   })
 };

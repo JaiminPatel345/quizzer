@@ -86,6 +86,7 @@ class ServiceClient {
 let authServiceClientInstance: ServiceClient | null = null;
 let aiServiceClientInstance: ServiceClient | null = null;
 let analyticsServiceClientInstance: ServiceClient | null = null;
+let submissionServiceClientInstance: ServiceClient | null = null;
 
 export const getAuthServiceClient = (): ServiceClient => {
   if (!authServiceClientInstance) {
@@ -119,6 +120,17 @@ export const getAnalyticsServiceClient = (): ServiceClient => {
     });
   }
   return analyticsServiceClientInstance;
+};
+
+export const getSubmissionServiceClient = (): ServiceClient => {
+  if (!submissionServiceClientInstance) {
+    submissionServiceClientInstance = new ServiceClient({
+      baseURL: process.env.SUBMISSION_SERVICE_URL || 'http://localhost:3004',
+      timeout: 10000,
+      retries: 3
+    });
+  }
+  return submissionServiceClientInstance;
 };
 
 

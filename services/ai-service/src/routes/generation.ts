@@ -12,7 +12,7 @@ const router = Router();
 router.use(authenticateToken);
 router.use(aiLimiter);
 
-// Generate standard questions
+// Generate standard questions : internal route
 router.post('/questions', validateRequest(generateQuestionsSchema), generateQuestions);
 
 // Generate adaptive questions based on user performance

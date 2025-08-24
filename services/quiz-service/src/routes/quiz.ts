@@ -1,52 +1,110 @@
-import { Router } from 'express';
+import {Router} from 'express';
 import {
+  createAIGeneratedQuiz,
   createQuiz,
-  getQuizzes,
-  getQuizById,
-  updateQuiz,
   deleteQuiz,
   duplicateQuiz,
+  generateHintForQuestion,
+  getQuizById,
+  getQuizzes,
+  submitQuiz,
   updateQuestionHints,
-  createAIGeneratedQuiz, getQuizWithHints,
+  updateQuiz,
 } from '../controllers/quizController.js';
-import { authenticateToken } from '../middleware/auth.js';
-import { quizLimiter } from '../middleware/rateLimiter.js';
-import { validateRequest } from '../middleware/validation.js';
+import {authenticateToken} from '../middleware/auth.js';
+import {quizLimiter} from '../middleware/rateLimiter.js';
+import {validateRequest} from '../middleware/validation.js';
 import {
+  createAIQuizSchema,
   createQuizSchema,
-  getQuizzesSchema,
-  getQuizByIdSchema,
-  updateQuizSchema,
   deleteQuizSchema,
-  duplicateQuizSchema, createAIQuizSchema,
+  duplicateQuizSchema,
+  getQuizByIdSchema,
+  getQuizzesSchema,
+  updateQuizSchema,
 } from '../validators/quizValidator.js';
-import {updateQuestionHintsSchema} from '../validators/hintValidator.js';
+import {
+  generateHintForQuestionSchema, updateQuestionHintsSchema,
+} from '../validators/hintValidator.js';
+import {
+  submitQuizSchema,
+} from 'submission-service/dist/validators/submissionValidator.js';
 
 const router = Router();
 
 // Public routes (with optional auth for personalized results)
 router.get('/', quizLimiter, validateRequest(getQuizzesSchema), getQuizzes);
-router.get('/:quizId', quizLimiter, validateRequest(getQuizByIdSchema), getQuizById);
 
-// Protected routes
-router.post('/', authenticateToken, quizLimiter, validateRequest(createQuizSchema), createQuiz);
-router.put('/:quizId', authenticateToken, quizLimiter, validateRequest(updateQuizSchema), updateQuiz);
-router.delete('/:quizId', authenticateToken, quizLimiter, validateRequest(deleteQuizSchema), deleteQuiz);
-router.post('/:quizId/duplicate', authenticateToken, quizLimiter, validateRequest(duplicateQuizSchema), duplicateQuiz);
+router.get('/:quizId',
+    quizLimiter,
+    validateRequest(getQuizByIdSchema),
+    getQuizById,
+);
 
-// Hint management
+// Protected routes : internal route
+router.post('/',
+    authenticateToken,
+    quizLimiter,
+    validateRequest(createQuizSchema),
+    createQuiz,
+);
+
+router.put('/:quizId',
+    authenticateToken,
+    quizLimiter,
+    validateRequest(updateQuizSchema),
+    updateQuiz,
+);
+
+router.delete('/:quizId',
+    authenticateToken,
+    quizLimiter,
+    validateRequest(deleteQuizSchema),
+    deleteQuiz,
+);
+
+router.post('/:quizId/duplicate',
+    authenticateToken,
+    quizLimiter,
+    validateRequest(duplicateQuizSchema),
+    duplicateQuiz,
+);
+
+router.post('/:quizId/question/:questionId/hint',
+    authenticateToken,
+    quizLimiter,
+    validateRequest(generateHintForQuestionSchema),
+    generateHintForQuestion,
+);
+
+// Hint management : internal route
 router.put('/:quizId/question/:questionId/hints',
     authenticateToken,
     quizLimiter,
     validateRequest(updateQuestionHintsSchema),
-    updateQuestionHints
+    updateQuestionHints,
 );
 
 // Update route to use new parameter name
-router.get('/:quizId', quizLimiter, validateRequest(getQuizByIdSchema), getQuizById);
+router.get('/:quizId',
+    quizLimiter,
+    validateRequest(getQuizByIdSchema),
+    getQuizById,
+);
 
-// Add new AI generation route
-router.post('/generate', authenticateToken, quizLimiter, validateRequest(createAIQuizSchema), createAIGeneratedQuiz);
+// generate quiz using ai : Client route
+router.post('/generate',
+    authenticateToken,
+    quizLimiter,
+    validateRequest(createAIQuizSchema),
+    createAIGeneratedQuiz,
+);
 
+router.post('/:quizId/submit',
+    authenticateToken,
+    quizLimiter,
+    validateRequest(submitQuizSchema),
+    submitQuiz,
+);
 
 export default router;

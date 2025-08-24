@@ -32,3 +32,24 @@ export const updateQuestionHintsSchema = {
     })
   })
 };
+
+export const generateHintForQuestionSchema = {
+  params: Joi.object({
+    quizId: Joi.string()
+      .pattern(/^[0-9a-fA-F]{24}$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Invalid quiz ID format',
+        'any.required': 'Quiz ID is required'
+      }),
+    questionId: Joi.string()
+      .trim()
+      .min(1)
+      .required()
+      .messages({
+        'string.min': 'Question ID cannot be empty',
+        'any.required': 'Question ID is required'
+      })
+  })
+};
+

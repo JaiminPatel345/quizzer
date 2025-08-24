@@ -5,11 +5,8 @@ import { AILog } from '../models/AILog.js';
 import { handleError, BadRequestError, UnauthorizedError } from '../utils/errorHandler.js';
 import { logger } from '../utils/logger.js';
 import type { AuthRequest, QuizQuestion } from '../types/index.js';
-import {getQuizServiceClient} from '../config/serviceClient.js';
-import { NotFoundError } from '../utils/errorHandler.js';
 
 export const generateHint = async (req: AuthRequest, res: Response): Promise<void> => {
-  const startTime = Date.now();
   let aiModel: 'groq' | 'gemini' = 'groq';
 
   try {
@@ -17,75 +14,33 @@ export const generateHint = async (req: AuthRequest, res: Response): Promise<voi
       throw new UnauthorizedError('User not authenticated');
     }
 
-    const { question } = req.body;
-    const { questionId } = question;
+    const { question }: { question: QuizQuestion } = req.body;
 
-    if (!questionId) {
-      throw new BadRequestError('Question ID is required');
+    if (!question || !question.questionId || !question.questionText) {
+      throw new BadRequestError('Valid question object with questionId and questionText is required');
     }
 
-    // Fetch full question details from Quiz service internally
-    const quizServiceClient = getQuizServiceClient();
-    let fullQuestion: QuizQuestion;
-
-    try {
-      // Find quiz containing this question
-      const quizzesResponse = await quizServiceClient.get<{
-        success: boolean;
-        data: { quizzes: any[] };
-      }>('/api/quiz?limit=100', {
-        headers: { Authorization: req.headers.authorization as string }
-      });
-
-      if (!quizzesResponse.success) {
-        throw new Error('Failed to fetch quizzes');
-      }
-
-      // Find the question across all quizzes
-      let foundQuestion: QuizQuestion | null = null;
-      for (const quiz of quizzesResponse.data.quizzes) {
-        const quizDetail = await quizServiceClient.get<{
-          success: boolean;
-          data: { quiz: any };
-        }>(`/api/quiz/${quiz._id}`, {
-          headers: { Authorization: req.headers.authorization as string }
-        });
-
-        if (quizDetail.success) {
-          foundQuestion = quizDetail.data.quiz.questions.find((q: any) => q.questionId === questionId);
-          if (foundQuestion) break;
-        }
-      }
-
-      if (!foundQuestion) {
-        throw new NotFoundError('Question not found');
-      }
-
-      fullQuestion = foundQuestion;
-    } catch (serviceError) {
-      throw new Error('Failed to fetch question details from Quiz service');
-    }
-
-    // Generate hint using AI (without exposing correct answer)
-    let hint;
+    // AI hint generation
+    let hints: string[];
     let success = false;
-    let error;
+    let error: string | undefined;
 
     try {
       const groqService = getGroqService();
-      hint = await groqService.generateHint(fullQuestion);
+      const hint = await groqService.generateHint(question);
+      hints = [hint]; // Convert to array for consistency
       aiModel = 'groq';
       success = true;
-    } catch (groqError) {
-      logger.warn('Groq hint generation failed, trying Gemini:', groqError);
-
+    } catch (groqErr) {
+      logger.warn('Groq hint generation failed, trying Gemini:', groqErr);
       try {
         const geminiService = getGeminiService();
-        hint = await geminiService.generateHint(fullQuestion);
+        const hint = await geminiService.generateHint(question);
+        hints = [hint]; // Convert to array for consistency
         aiModel = 'gemini';
         success = true;
-      } catch (geminiError) {
-        logger.error('Both AI services failed for hint generation:', { groqError, geminiError });
+      } catch (geminiErr) {
+        logger.error('Both AI services failed for hint generation:', { groqErr, geminiErr });
         error = 'All AI services failed';
         throw new Error('AI services unavailable. Please try again later.');
       }
@@ -97,41 +52,41 @@ export const generateHint = async (req: AuthRequest, res: Response): Promise<voi
         userId: req.userId,
         taskType: 'hint',
         inputData: {
-          questionId: fullQuestion.questionId,
-          questionType: fullQuestion.questionType,
-          difficulty: fullQuestion.difficulty,
-          topic: fullQuestion.topic
+          questionId: question.questionId,
+          questionType: question.questionType,
+          difficulty: question.difficulty,
+          topic: question.topic
         },
-        outputData: { hint },
+        outputData: { hints },
         model: aiModel,
         success,
         error
       });
       await aiLog.save();
-    } catch (logError) {
-      logger.error('Failed to log AI task:', logError);
+    } catch (logErr) {
+      logger.error('Failed to log AI task:', logErr);
     }
 
-    logger.info('Hint generated successfully:', {
+    logger.info('Hint generated successfully', {
       userId: req.userId,
-      questionId: fullQuestion.questionId,
+      questionId: question.questionId,
       model: aiModel
     });
 
     res.status(200).json({
       success: true,
-      message: 'Hint generated successfully',
+      message: 'Hints generated successfully',
       data: {
-        hint,
-        questionId: fullQuestion.questionId,
+        hints,
+        questionId: question.questionId,
         metadata: {
           model: aiModel
         }
       }
     });
 
-  } catch (error) {
-    // Log failed AI task
+  } catch (err) {
+    // Log failure
     try {
       const aiLog = new AILog({
         userId: req.userId,
@@ -140,13 +95,13 @@ export const generateHint = async (req: AuthRequest, res: Response): Promise<voi
         outputData: null,
         model: aiModel,
         success: false,
-        error: (error as Error).message
+        error: (err as Error).message
       });
       await aiLog.save();
-    } catch (logError) {
-      logger.error('Failed to log AI task failure:', logError);
+    } catch (logErr) {
+      logger.error('Failed to log AI task failure:', logErr);
     }
 
-    handleError(res, 'generateHint', error as Error);
+    handleError(res, 'generateHint', err as Error);
   }
 };

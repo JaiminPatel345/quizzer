@@ -9,14 +9,22 @@ import {
   getAIServiceClient,
 } from 'submission-service/dist/config/serviceClient.js';
 import {sanitizeQuestionsForClient} from '../utils/helper.js';
+import {
+  getAnalyticsServiceClient, getSubmissionServiceClient,
+} from '../config/serviceClient.js';
+import {sendAnalyticsEmail} from '../utils/emailUtil.js';
+import {SubmissionResponse} from '../types/submissionTypes.js';
 
-export const createQuiz = async (req: AuthRequest, res: Response): Promise<void> => {
+export const createQuiz = async (
+    req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.user) {
       throw new UnauthorizedError('User not authenticated');
     }
 
-    const { title, description, metadata, questions, template, isPublic } = req.body;
+    const {
+      title, description, metadata, questions, template, isPublic,
+    } = req.body;
 
     // Validate question count matches metadata
     if (questions.length !== metadata.totalQuestions) {
@@ -33,7 +41,7 @@ export const createQuiz = async (req: AuthRequest, res: Response): Promise<void>
       createdBy: req.userId,
       isActive: true,
       isPublic: isPublic || false,
-      version: 1
+      version: 1,
     });
 
     await quiz.save();
@@ -42,32 +50,28 @@ export const createQuiz = async (req: AuthRequest, res: Response): Promise<void>
       quizId: quiz._id,
       title: quiz.title,
       createdBy: req.userId,
-      questionsCount: questions.length
+      questionsCount: questions.length,
     });
 
-    // FIXED: Return complete quiz with questions
     res.status(201).json({
-      success: true,
-      message: 'Quiz created successfully',
-      data: {
+      success: true, message: 'Quiz created successfully', data: {
         quiz: {
           _id: quiz._id,
           title: quiz.title,
           description: quiz.description,
           metadata: quiz.metadata,
-          questions: quiz.questions, // ✅ INCLUDE QUESTIONS
+          questions: quiz.questions,
           template: quiz.template,
           createdBy: quiz.createdBy,
           isPublic: quiz.isPublic,
           isActive: quiz.isActive,
           version: quiz.version,
           createdAt: quiz.createdAt,
-          updatedAt: quiz.updatedAt,
-          // Additional metadata
+          updatedAt: quiz.updatedAt, // Additional metadata
           questionsCount: questions.length,
-          aiGenerated: false
-        }
-      }
+          aiGenerated: false,
+        },
+      },
     });
 
   } catch (error) {
@@ -76,8 +80,7 @@ export const createQuiz = async (req: AuthRequest, res: Response): Promise<void>
 };
 
 
-export const getQuizzes = async (
-    req: AuthRequest, res: Response): Promise<void> => {
+export const getQuizzes = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const {
       grade,
@@ -86,80 +89,95 @@ export const getQuizzes = async (
       category,
       tags,
       isPublic,
+      from,
+      to,
+      marks,
+      completedDate,
       page,
       limit,
       sortBy,
       sortOrder,
     } = req.query;
 
-    // Build filter
-    const filter: any = {isActive: true};
+    const filter: any = { isActive: true };
 
     if (grade) filter['metadata.grade'] = parseInt(grade as string);
-    if (subject) {
-      filter['metadata.subject'] = new RegExp(subject as string, 'i');
-    }
+    if (subject) filter['metadata.subject'] = new RegExp(subject as string, 'i');
     if (difficulty) filter['metadata.difficulty'] = difficulty;
-    if (category) {
-      filter['metadata.category'] = new RegExp(category as string, 'i');
-    }
+    if (category) filter['metadata.category'] = new RegExp(category as string, 'i');
     if (tags) {
       const tagArray = (tags as string).split(',').map(tag => tag.trim());
-      filter['metadata.tags'] = {$in: tagArray};
+      filter['metadata.tags'] = { $in: tagArray };
+    }
+
+    if (from || to) {
+      filter.createdAt = {};
+      if (from) filter.createdAt.$gte = new Date(from as string);
+      if (to) filter.createdAt.$lte = new Date(to as string);
+    }
+
+    if (marks) filter['metadata.marks'] = parseInt(marks as string);
+
+    if (completedDate) {
+      filter.completedDate = new Date(completedDate as string);
+      // Note: If completedDate is stored in submissions, this may require a join or separate query
     }
 
     // Public/private filter
-    if (isPublic !== undefined) {
+    if (typeof isPublic !== 'undefined') {
       filter.isPublic = isPublic === 'true';
     } else if (!req.user) {
-      // If not authenticated, only show public quizzes
       filter.isPublic = true;
     } else {
-      // If authenticated, show public quizzes + user's own quizzes
-      filter.$or = [
-        {isPublic: true}, {createdBy: req.userId},
-      ];
+      filter.$or = [{ isPublic: true }, { createdBy: req.userId }];
     }
 
-    // Build sort object
-    const sort: any = {};
-    sort[sortBy as string] = sortOrder === 'asc' ? 1 : -1;
+    // Sort and pagination
+    const sortField = sortBy || 'createdAt';
+    const sortDirection = sortOrder === 'asc' ? 1 : -1;
+    const sortObj: any = {};
+    sortObj[sortField as string] = sortDirection;
 
-    // Calculate pagination
     const pageNumber = parseInt(page as string) || 1;
     const pageSize = parseInt(limit as string) || 10;
     const skip = (pageNumber - 1) * pageSize;
 
-    // Get quizzes (exclude questions from list view for performance)
-    const quizzes = await Quiz.find(filter).
-        select('-questions').
-        sort(sort).
-        skip(skip).
-        limit(pageSize).
-        populate('createdBy', 'username').
-        lean();
+    // Query
+    const quizzes = await Quiz.find(filter)
+    .select('-questions') // exclude questions for list view
+        .sort(sortObj)
+        .skip(skip)
+        .limit(pageSize)
+        .populate('createdBy', 'username')
+        .lean();
 
-    // Get total count
     const total = await Quiz.countDocuments(filter);
     const totalPages = Math.ceil(total / pageSize);
 
     logger.info('Quizzes retrieved:', {
-      count: quizzes.length, total, filter: JSON.stringify(filter),
+      count: quizzes.length,
+      total,
+      filter: JSON.stringify(filter)
     });
 
     res.status(200).json({
-      success: true, message: 'Quizzes retrieved successfully', data: {
+      success: true,
+      message: 'Quizzes retrieved successfully',
+      data: {
         quizzes: quizzes.map(quiz => ({
-          ...quiz, questionsCount: quiz.metadata.totalQuestions,
-        })), pagination: {
+          ...quiz,
+          questionsCount: quiz.metadata.totalQuestions
+        })),
+        pagination: {
           currentPage: pageNumber,
           totalPages,
           totalItems: total,
           itemsPerPage: pageSize,
           hasNextPage: pageNumber < totalPages,
-          hasPrevPage: pageNumber > 1,
+          hasPrevPage: pageNumber > 1
         },
-      },
+        appliedFilters: { from, to, marks, completedDate }
+      }
     });
 
   } catch (error) {
@@ -168,24 +186,29 @@ export const getQuizzes = async (
 };
 
 
-export const getQuizById = async (req: AuthRequest, res: Response): Promise<void> => {
+export const getQuizById = async (
+    req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { quizId } = req.params;
-    const { includeHints = false, includeAnswers = false } = req.query;
+    const {quizId} = req.params;
+    const {includeHints = false, includeAnswers = false} = req.query;
 
-    const quiz = await Quiz.findById(quizId).populate('createdBy', 'username email').lean();
+    const quiz = await Quiz.findById(quizId).populate('createdBy',
+        'username email',
+    ).lean();
 
     if (!quiz) {
       throw new NotFoundError('Quiz');
     }
 
     // Check access permissions
-    if (!quiz.isPublic && (!req.user || quiz.createdBy._id.toString() !== req.userId?.toString())) {
+    if (!quiz.isPublic && (!req.user || quiz.createdBy._id.toString() !==
+        req.userId?.toString())) {
       throw new UnauthorizedError('Access denied to this quiz');
     }
 
     // Check if user is owner/admin to see answers
-    const isOwner = req.user && quiz.createdBy._id.toString() === req.userId?.toString();
+    const isOwner = req.user && quiz.createdBy._id.toString() ===
+        req.userId?.toString();
     const showAnswers = includeAnswers === 'true' && isOwner;
 
     // ... existing hint generation logic ...
@@ -195,30 +218,28 @@ export const getQuizById = async (req: AuthRequest, res: Response): Promise<void
       title: quiz.title,
       requestedBy: req.userId,
       includeHints,
-      showAnswers
+      showAnswers,
     });
 
     // SECURITY: Sanitize questions based on permissions
     res.status(200).json({
-      success: true,
-      message: 'Quiz retrieved successfully',
-      data: {
+      success: true, message: 'Quiz retrieved successfully', data: {
         quiz: {
           ...quiz,
           questions: sanitizeQuestionsForClient(quiz.questions, showAnswers), // ✅ CONDITIONAL SANITIZATION
           hintsGenerated: includeHints === 'true',
           hintsCount: includeHints === 'true'
-              ? quiz.questions.reduce((sum: number, q: any) => sum + (q.hints?.length || 0), 0)
-              : 0
-        }
-      }
+              ? quiz.questions.reduce((sum: number, q: any) => sum +
+                  (q.hints?.length || 0), 0)
+              : 0,
+        },
+      },
     });
 
   } catch (error) {
     handleError(res, 'getQuizById', error as Error);
   }
 };
-
 
 export const updateQuiz = async (
     req: AuthRequest, res: Response): Promise<void> => {
@@ -265,7 +286,6 @@ export const updateQuiz = async (
   }
 };
 
-
 export const deleteQuiz = async (
     req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -304,7 +324,6 @@ export const deleteQuiz = async (
     handleError(res, 'deleteQuiz', error as Error);
   }
 };
-
 
 export const duplicateQuiz = async (
     req: AuthRequest, res: Response): Promise<void> => {
@@ -364,7 +383,6 @@ export const duplicateQuiz = async (
   }
 };
 
-
 export const updateQuestionHints = async (
     req: AuthRequest, res: Response): Promise<void> => {
   try {
@@ -420,25 +438,34 @@ export const updateQuestionHints = async (
   }
 };
 
-
-export const createAIGeneratedQuiz = async (req: AuthRequest, res: Response): Promise<void> => {
+export const createAIGeneratedQuiz = async (
+    req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.user) {
       throw new UnauthorizedError('User not authenticated');
     }
 
-    const { title, description, generationParams, metadata, isPublic = false } = req.body;
+    const {
+      title, description, generationParams, metadata, isPublic = false,
+    } = req.body;
 
-    // Call AI Service to generate questions
+    //  endpoint based on adaptiveGeneration flag
+    const endpoint = generationParams.adaptiveGeneration
+        ? '/api/ai/generate/adaptive'
+        : '/api/ai/generate/questions';
+
     const aiServiceClient = getAIServiceClient();
     const questionsResponse = await aiServiceClient.post<{
-      success: boolean;
-      data: {
-        questions: QuizQuestion[];
-        metadata: any;
-      };
-    }>('/api/ai/generate/questions', generationParams, {
-      headers: { Authorization: req.headers.authorization as string }
+      success: boolean; data: { questions: QuizQuestion[]; metadata: any; };
+    }>(endpoint, generationParams.adaptiveGeneration ? {
+      baseParams: {
+        grade: generationParams.grade,
+        subject: generationParams.subject,
+        totalQuestions: generationParams.totalQuestions,
+        topics: generationParams.topics,
+      }, userPerformanceData: generationParams.userPerformanceData,
+    } : generationParams, {
+      headers: {Authorization: req.headers.authorization as string},
     });
 
     if (!questionsResponse.success) {
@@ -447,39 +474,26 @@ export const createAIGeneratedQuiz = async (req: AuthRequest, res: Response): Pr
 
     const questions = questionsResponse.data.questions;
 
-    // Create quiz with generated questions
     const quiz = new Quiz({
-      title,
-      description,
-      metadata: {
+      title, description, metadata: {
         grade: generationParams.grade,
         subject: generationParams.subject,
         totalQuestions: questions.length,
         timeLimit: metadata?.timeLimit || 30,
         difficulty: generationParams.difficulty,
         tags: metadata?.tags || [],
-        category: metadata?.category
-      },
-      questions,
-      createdBy: req.userId,
-      isPublic,
-      isActive: true,
-      version: 1
+        category: metadata?.category,
+        isAdaptive: generationParams.adaptiveGeneration || false,
+      }, questions, createdBy: req.userId, isPublic, isActive: true, version: 1,
     });
 
     await quiz.save();
 
-    logger.info('AI-generated quiz created:', {
-      quizId: quiz._id,
-      createdBy: req.userId,
-      questionsCount: questions.length,
-      aiModel: questionsResponse.data.metadata?.model
-    });
-
-    // SECURITY: Return sanitized questions (no correct answers)
     res.status(201).json({
       success: true,
-      message: 'AI-generated quiz created successfully',
+      message: `${generationParams.adaptiveGeneration
+          ? 'Adaptive'
+          : 'AI-generated'} quiz created successfully`,
       data: {
         quiz: {
           _id: quiz._id,
@@ -495,16 +509,16 @@ export const createAIGeneratedQuiz = async (req: AuthRequest, res: Response): Pr
           updatedAt: quiz.updatedAt,
           questionsCount: questions.length,
           aiGenerated: true,
-          aiModel: questionsResponse.data.metadata?.model
-        }
-      }
+          isAdaptive: generationParams.adaptiveGeneration,
+          aiModel: questionsResponse.data.metadata?.model,
+        },
+      },
     });
 
   } catch (error) {
     handleError(res, 'createAIGeneratedQuiz', error as Error);
   }
 };
-
 
 export const getQuizWithHints = async (
     req: AuthRequest, res: Response): Promise<void> => {
@@ -578,5 +592,187 @@ export const getQuizWithHints = async (
 
   } catch (error) {
     handleError(res, 'getQuizWithHints', error as Error);
+  }
+};
+
+export const generateHintForQuestion = async (
+    req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      throw new UnauthorizedError('User not authenticated');
+    }
+
+    const {quizId, questionId} = req.params;
+
+    // Validate ObjectId format for quizId
+    if (!quizId || !/^[0-9a-fA-F]{24}$/.test(quizId)) {
+      throw new BadRequestError('Invalid quiz ID format');
+    }
+
+    if (!questionId || questionId.trim() === '') {
+      throw new BadRequestError('Question ID is required');
+    }
+
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      throw new NotFoundError('Quiz not found');
+    }
+
+    const question = quiz.questions.find(q => q.questionId === questionId);
+    if (!question) {
+      throw new NotFoundError('Question not found in this quiz');
+    }
+
+    // Check if hints already exist
+    if (question.hints && question.hints.length > 0) {
+      res.status(200).json({
+        success: true, message: 'Hints already exist for this question', data: {
+          hints: question.hints, questionId, cached: true,
+        },
+      });
+      return;
+    }
+
+    try {
+      const aiServiceClient = getAIServiceClient();
+      const hintResponse = await aiServiceClient.post<{
+        success: boolean; data: { hints: string[] };
+      }>('/api/ai/generate/hint', {
+        question: {
+          questionId: question.questionId,
+          questionText: question.questionText,
+          questionType: question.questionType,
+          options: question.options,
+          correctAnswer: question.correctAnswer, // AI service gets correct answer
+          topic: question.topic,
+          difficulty: question.difficulty,
+        },
+      }, {
+        headers: {Authorization: req.headers.authorization as string},
+      });
+
+      if (!hintResponse.success || !hintResponse.data.hints) {
+        throw new Error('Invalid response from AI service');
+      }
+
+      const hints = hintResponse.data.hints;
+
+      // Validate hints array
+      if (!Array.isArray(hints) || hints.length === 0) {
+        throw new Error('AI service returned invalid hints format');
+      }
+
+      // Update question with hints in database
+      const questionIndex = quiz.questions.findIndex(q => q.questionId ===
+          questionId);
+      if (quiz.questions[questionIndex]) {
+        quiz.questions[questionIndex].hints = hints;
+      }
+      quiz.version += 1;
+      await quiz.save();
+
+      logger.info('Hints generated and stored:', {
+        quizId, questionId, userId: req.userId, hintsCount: hints.length,
+      });
+
+      res.status(200).json({
+        success: true, message: 'Hints generated successfully', data: {
+          hints, questionId, cached: false, hintsCount: hints.length,
+        },
+      });
+
+    } catch (aiError) {
+      logger.error('AI service error for hint generation:', {
+        error: aiError,
+        quizId,
+        questionId,
+        userId: req.userId
+      });
+      throw new Error('Failed to generate hints. Please try again later.');
+    }
+
+  } catch (error) {
+    handleError(res, 'generateHintForQuestion', error as Error);
+  }
+};
+
+export const submitQuiz = async (
+    req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      throw new UnauthorizedError('User not authenticated');
+    }
+
+    const {quizId} = req.params;
+    const {
+      answers,
+      startedAt,
+      submittedAt,
+      requestEvaluation = true,
+      sendAnalyticsToEmail = false,
+    } = req.body;
+
+    // Call submission service
+    const submissionServiceClient = getSubmissionServiceClient();
+    const submissionResponse = await submissionServiceClient.post<SubmissionResponse>(
+        '/api/submission/submit',
+        {
+          quizId, answers, startedAt, submittedAt, requestEvaluation,
+        },
+        {
+          headers: {Authorization: req.headers.authorization as string},
+        },
+    );
+
+    if (!submissionResponse.success) {
+      throw new Error('Failed to submit quiz to submission service');
+    }
+
+    const submissionData = submissionResponse.data;
+
+    // Update analytics
+    try {
+      const analyticsServiceClient = getAnalyticsServiceClient();
+      await analyticsServiceClient.post('/api/analytics/performance/update', {
+        subject: submissionData.quiz.metadata.subject,
+        grade: submissionData.quiz.metadata.grade,
+        submissionData: {
+          quizId: submissionData.submission.quizId,
+          scoring: submissionData.submission.scoring,
+          timing: submissionData.submission.timing,
+          answers: submissionData.submission.answers,
+        },
+      }, {
+        headers: {Authorization: req.headers.authorization as string},
+      });
+    } catch (analyticsError) {
+      logger.warn('Analytics update failed:', analyticsError);
+    }
+
+    // Send email if requested
+    if (sendAnalyticsToEmail && req.user.email) {
+      try {
+        await sendAnalyticsEmail(req.user.email, {
+          username: req.user.username,
+          quizTitle: submissionData.quiz.title,
+          score: submissionData.submission.scoring.scorePercentage,
+          grade: submissionData.submission.scoring.grade,
+          suggestions: submissionData.results.suggestions,
+          strengths: submissionData.results.strengths,
+          weaknesses: submissionData.results.weaknesses,
+        });
+      } catch (emailError) {
+        logger.warn('Failed to send analytics email:', emailError);
+      }
+    }
+
+    res.status(201).json({
+      success: true, message: 'Quiz submitted successfully', data: {
+        ...submissionData, emailSent: sendAnalyticsToEmail,
+      },
+    });
+
+  } catch (error) {
+    handleError(res, 'submitQuiz', error as Error);
   }
 };
