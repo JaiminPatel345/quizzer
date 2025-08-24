@@ -21,7 +21,7 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
       success: boolean;
       data: { quiz: any };
     }>(`/api/quiz/${quizId}`, {
-      headers: { Authorization: req.headers.authorization as string }
+      headers: { Authorization: req.headers.authorization as string}
     });
 
     if (!quizResponse.success) {
@@ -30,7 +30,7 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
 
     const quiz = quizResponse.data.quiz;
 
-    // 2. Calculate scores
+    // 2. Calculate scores using scoring service
     const evaluatedAnswers = ScoringService.calculateScore(quiz.questions, answers);
     const statistics = ScoringService.calculateStatistics(evaluatedAnswers);
 
@@ -48,31 +48,48 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
       totalTimeSpent: Math.floor((new Date(submittedAt).getTime() - new Date(startedAt).getTime()) / 1000)
     };
 
+    // Check for existing attempts
+    const existingAttempts = await Submission.countDocuments({ userId, quizId });
+    const attemptNumber = existingAttempts + 1;
+
+    // Get device info
+    const userAgent = req.get('User-Agent') || 'Unknown';
+    const deviceType = /Mobile|Android|iPhone|iPad/.test(userAgent) ? 'mobile' :
+        /Tablet/.test(userAgent) ? 'tablet' : 'desktop';
+
     // 3. Create submission
     const submission = new Submission({
       quizId,
       userId,
-      attemptNumber: await Submission.countDocuments({ userId, quizId }) + 1,
+      attemptNumber,
       answers: evaluatedAnswers,
       scoring,
       timing,
       metadata: {
         ipAddress: req.ip || 'Unknown',
-        userAgent: req.get('User-Agent') || 'Unknown',
-        deviceType: /Mobile|Android|iPhone|iPad/.test(req.get('User-Agent') || '') ? 'mobile' : 'desktop'
+        userAgent,
+        deviceType
       },
       isCompleted: true
     });
 
-    // 4. Request AI evaluation if requested
+    // 4. Request AI evaluation
+    let aiEvaluationData = null;
     if (requestEvaluation) {
       try {
         const aiServiceClient = getAIServiceClient();
         const evaluationResponse = await aiServiceClient.post<{
           success: boolean;
           data: {
-            evaluation: any;
-            metadata: { model: 'groq' | 'gemini' };
+            evaluation: {
+              suggestions: string[];
+              strengths: string[];
+              weaknesses: string[];
+            };
+            metadata: {
+              model: 'groq' | 'gemini';
+              processingTime: number;
+            };
           };
         }>('/api/ai/evaluate/submission', {
           questions: quiz.questions,
@@ -82,13 +99,15 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
         });
 
         if (evaluationResponse.success) {
-          submission.aiEvaluation = {
+          aiEvaluationData = {
             model: evaluationResponse.data.metadata.model,
             suggestions: evaluationResponse.data.evaluation.suggestions,
             strengths: evaluationResponse.data.evaluation.strengths,
             weaknesses: evaluationResponse.data.evaluation.weaknesses,
-            evaluatedAt: new Date()
+            evaluatedAt: new Date(),
+            // processingTime: evaluationResponse.data.metadata.processingTime
           };
+          submission.aiEvaluation = aiEvaluationData;
         }
       } catch (aiError) {
         logger.warn('AI evaluation failed:', aiError);
@@ -97,7 +116,7 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
 
     await submission.save();
 
-    // 5. Update analytics automatically
+    // 5. Update analytics service
     try {
       const analyticsServiceClient = getAnalyticsServiceClient();
       await analyticsServiceClient.post('/api/analytics/performance/update', {
@@ -121,27 +140,48 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
       userId,
       quizId,
       submissionId: submission._id,
-      score: scoring.scorePercentage
+      score: scoring.scorePercentage,
+      attemptNumber,
+      aiEvaluated: !!aiEvaluationData
     });
 
+    // FIXED: Return complete submission data with all context
     res.status(201).json({
       success: true,
       message: 'Quiz submitted successfully',
       data: {
         submission: {
           _id: submission._id,
-          scoring,
-          timing,
-          aiEvaluation: submission.aiEvaluation
+          quizId: submission.quizId,
+          userId: submission.userId,
+          attemptNumber: submission.attemptNumber,
+          scoring: submission.scoring,
+          timing: submission.timing,
+          aiEvaluation: aiEvaluationData,
+          metadata: submission.metadata,
+          isCompleted: submission.isCompleted,
+          createdAt: submission.createdAt,
+          updatedAt: submission.updatedAt
+        },
+        quiz: {
+          _id: quiz._id,
+          title: quiz.title,
+          metadata: quiz.metadata
         },
         results: {
           score: scoring.scorePercentage,
           grade: scoring.grade,
           correctAnswers: scoring.correctAnswers,
           totalQuestions: scoring.totalQuestions,
-          suggestions: submission.aiEvaluation?.suggestions || [],
-          strengths: submission.aiEvaluation?.strengths || [],
-          weaknesses: submission.aiEvaluation?.weaknesses || []
+          totalTimeSpent: timing.totalTimeSpent,
+          suggestions: aiEvaluationData?.suggestions || [],
+          strengths: aiEvaluationData?.strengths || [],
+          weaknesses: aiEvaluationData?.weaknesses || [],
+          aiModel: aiEvaluationData?.model || null,
+        },
+        analytics: {
+          updated: true,
+          message: 'Performance data updated automatically'
         }
       }
     });

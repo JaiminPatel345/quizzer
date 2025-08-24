@@ -42,10 +42,11 @@ router.put('/:quizId/question/:questionId/hints',
     updateQuestionHints
 );
 
-router.post('/generate', authenticateToken, quizLimiter, validateRequest(createAIQuizSchema), createAIGeneratedQuiz);
+// Update route to use new parameter name
+router.get('/:quizId', quizLimiter, validateRequest(getQuizByIdSchema), getQuizById);
 
-// Update existing route
-router.get('/:quizId', quizLimiter, validateRequest(getQuizByIdSchema), getQuizWithHints);
+// Add new AI generation route
+router.post('/generate', authenticateToken, quizLimiter, validateRequest(createAIQuizSchema), createAIGeneratedQuiz);
 
 
 export default router;

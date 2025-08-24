@@ -122,4 +122,3 @@ export const getAnalyticsServiceClient = (): ServiceClient => {
   }
   return analyticsServiceClientInstance;
 };
-

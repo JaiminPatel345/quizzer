@@ -9,16 +9,13 @@ import {
   getAIServiceClient,
 } from 'submission-service/dist/config/serviceClient.js';
 
-export const createQuiz = async (
-    req: AuthRequest, res: Response): Promise<void> => {
+export const createQuiz = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.user) {
       throw new UnauthorizedError('User not authenticated');
     }
 
-    const {
-      title, description, metadata, questions, template, isPublic,
-    } = req.body;
+    const { title, description, metadata, questions, template, isPublic } = req.body;
 
     // Validate question count matches metadata
     if (questions.length !== metadata.totalQuestions) {
@@ -35,7 +32,7 @@ export const createQuiz = async (
       createdBy: req.userId,
       isActive: true,
       isPublic: isPublic || false,
-      version: 1,
+      version: 1
     });
 
     await quiz.save();
@@ -44,23 +41,39 @@ export const createQuiz = async (
       quizId: quiz._id,
       title: quiz.title,
       createdBy: req.userId,
-      questionsCount: questions.length,
+      questionsCount: questions.length
     });
 
-    const {questions: _, ...quizResponse} = quiz.toObject();
-
+    // FIXED: Return complete quiz with questions
     res.status(201).json({
-      success: true, message: 'Quiz created successfully', data: {
+      success: true,
+      message: 'Quiz created successfully',
+      data: {
         quiz: {
-          ...quizResponse, questionsCount: questions.length,
-        },
-      },
+          _id: quiz._id,
+          title: quiz.title,
+          description: quiz.description,
+          metadata: quiz.metadata,
+          questions: quiz.questions, // ✅ INCLUDE QUESTIONS
+          template: quiz.template,
+          createdBy: quiz.createdBy,
+          isPublic: quiz.isPublic,
+          isActive: quiz.isActive,
+          version: quiz.version,
+          createdAt: quiz.createdAt,
+          updatedAt: quiz.updatedAt,
+          // Additional metadata
+          questionsCount: questions.length,
+          aiGenerated: false
+        }
+      }
     });
 
   } catch (error) {
     handleError(res, 'createQuiz', error as Error);
   }
 };
+
 
 export const getQuizzes = async (
     req: AuthRequest, res: Response): Promise<void> => {
@@ -153,37 +166,107 @@ export const getQuizzes = async (
   }
 };
 
-export const getQuizById = async (
-    req: AuthRequest, res: Response): Promise<void> => {
+export const getQuizById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const {quizId} = req.params;
+    const { quizId } = req.params;
+    const { includeHints = false } = req.query;
 
-    const quiz = await Quiz.findById(quizId).populate('createdBy',
-        'username email',
-    ).lean();
+    const quiz = await Quiz.findById(quizId).populate('createdBy', 'username email').lean() ;
 
     if (!quiz) {
       throw new NotFoundError('Quiz');
     }
 
     // Check access permissions
-    if (!quiz.isPublic && (!req.user || quiz.createdBy._id.toString() !==
-        req.userId?.toString())) {
+    if (!quiz.isPublic && (!req.user || quiz.createdBy._id.toString() !== req.userId?.toString())) {
       throw new UnauthorizedError('Access denied to this quiz');
     }
 
+    let updatedQuiz = { ...quiz };
+
+    // If hints requested and user is authenticated, generate missing hints
+    if (includeHints === 'true' && req.user) {
+      const questionsNeedingHints = quiz.questions.filter(q => !q.hints || q.hints.length === 0);
+
+      if (questionsNeedingHints.length > 0) {
+        try {
+          const aiServiceClient = getAIServiceClient();
+          const updatedQuestions = [...quiz.questions] as QuizQuestion[];
+
+          // Generate hints for questions that need them
+          for (const question of questionsNeedingHints) {
+            try {
+              const hintResponse = await aiServiceClient.post<{
+                success: boolean;
+                data: { hints: string[] };
+              }>(`/api/ai/hint/generate/${quizId}/${question.questionId}`,
+                  { count: 2 },
+                  {
+                    headers: { Authorization: req.headers.authorization as string }
+                  });
+
+              if (hintResponse.success) {
+                // Update question with hints in response
+                const questionIndex = updatedQuestions.findIndex(q => q.questionId === question.questionId);
+                if (questionIndex !== -1) {
+                  updatedQuestions[questionIndex] = {
+                    ...updatedQuestions[questionIndex],
+                    hints: hintResponse.data.hints
+                  } as QuizQuestion;
+                }
+              }
+            } catch (hintError) {
+              logger.warn('Failed to generate hints for question:', {
+                questionId: question.questionId,
+                error: hintError
+              });
+            }
+          }
+
+          updatedQuiz.questions = updatedQuestions ;
+
+          // Update database with new hints
+          try {
+            await Quiz.findByIdAndUpdate(quizId, {
+              questions: updatedQuestions,
+              $inc: { version: 1 }
+            });
+          } catch (updateError) {
+            logger.warn('Failed to save hints to database:', updateError);
+          }
+        } catch (error) {
+          logger.error('Failed to generate hints:', error);
+        }
+      }
+    }
+
     logger.info('Quiz retrieved:', {
-      quizId: quiz._id, title: quiz.title, requestedBy: req.userId,
+      quizId: quiz._id,
+      title: quiz.title,
+      requestedBy: req.userId,
+      includeHints
     });
 
+    // FIXED: Return complete quiz with questions and optional hints
     res.status(200).json({
-      success: true, message: 'Quiz retrieved successfully', data: {quiz},
+      success: true,
+      message: 'Quiz retrieved successfully',
+      data: {
+        quiz: {
+          ...updatedQuiz,
+          hintsGenerated: includeHints === 'true',
+          hintsCount: includeHints === 'true'
+              ? updatedQuiz.questions.reduce((sum, q) => sum + (q.hints?.length || 0), 0)
+              : 0
+        }
+      }
     });
 
   } catch (error) {
     handleError(res, 'getQuizById', error as Error);
   }
 };
+
 
 export const updateQuiz = async (
     req: AuthRequest, res: Response): Promise<void> => {
@@ -381,23 +464,25 @@ export const updateQuestionHints = async (
     handleError(res, 'updateQuestionHints', error as Error);
   }
 };
-export const createAIGeneratedQuiz = async (
-    req: AuthRequest, res: Response): Promise<void> => {
+
+export const createAIGeneratedQuiz = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     if (!req.user) {
       throw new UnauthorizedError('User not authenticated');
     }
 
-    const {title, description, generationParams, isPublic = false} = req.body;
+    const { title, description, generationParams, metadata, isPublic = false } = req.body;
 
     // Call AI Service to generate questions
     const aiServiceClient = getAIServiceClient();
     const questionsResponse = await aiServiceClient.post<{
-      success: boolean; data: {
-        questions: QuizQuestion[]; metadata: any;
+      success: boolean;
+      data: {
+        questions: QuizQuestion[];
+        metadata: any;
       };
     }>('/api/ai/generate/questions', generationParams, {
-      headers: {Authorization: req.headers.authorization as string},
+      headers: { Authorization: req.headers.authorization as string }
     });
 
     if (!questionsResponse.success) {
@@ -408,15 +493,22 @@ export const createAIGeneratedQuiz = async (
 
     // Create quiz with generated questions
     const quiz = new Quiz({
-      title, description, metadata: {
+      title,
+      description,
+      metadata: {
         grade: generationParams.grade,
         subject: generationParams.subject,
         totalQuestions: questions.length,
-        timeLimit: req.body.metadata?.timeLimit || 30,
+        timeLimit: metadata?.timeLimit || 30,
         difficulty: generationParams.difficulty,
-        tags: req.body.metadata?.tags || [],
-        category: req.body.metadata?.category,
-      }, questions, createdBy: req.userId, isPublic, isActive: true, version: 1,
+        tags: metadata?.tags || [],
+        category: metadata?.category
+      },
+      questions,
+      createdBy: req.userId,
+      isPublic,
+      isActive: true,
+      version: 1
     });
 
     await quiz.save();
@@ -425,21 +517,32 @@ export const createAIGeneratedQuiz = async (
       quizId: quiz._id,
       createdBy: req.userId,
       questionsCount: questions.length,
-      aiModel: questionsResponse.data.metadata?.model,
+      aiModel: questionsResponse.data.metadata?.model
     });
 
+    // FIXED: Return complete quiz with questions
     res.status(201).json({
-      success: true, message: 'AI-generated quiz created successfully', data: {
+      success: true,
+      message: 'AI-generated quiz created successfully',
+      data: {
         quiz: {
           _id: quiz._id,
           title: quiz.title,
           description: quiz.description,
           metadata: quiz.metadata,
+          questions: questions, // ✅ INCLUDE QUESTIONS
+          createdBy: req.userId,
+          isPublic: quiz.isPublic,
+          isActive: quiz.isActive,
+          version: quiz.version,
+          createdAt: quiz.createdAt,
+          updatedAt: quiz.updatedAt,
+          // Additional metadata
           questionsCount: questions.length,
           aiGenerated: true,
-          aiModel: questionsResponse.data.metadata?.model,
-        },
-      },
+          aiModel: questionsResponse.data.metadata?.model
+        }
+      }
     });
 
   } catch (error) {

@@ -98,16 +98,17 @@ export const getAuthServiceClient = (): ServiceClient => {
   return authServiceClientInstance;
 };
 
-export const getAiServiceClient = (): ServiceClient => {
+export const getAIServiceClient = (): ServiceClient => {
   if (!aiServiceClientInstance) {
     aiServiceClientInstance = new ServiceClient({
       baseURL: process.env.AI_SERVICE_URL || 'http://localhost:3003',
-      timeout: 30000, // AI operations can take longer
+      timeout: 30000,
       retries: 2
     });
   }
   return aiServiceClientInstance;
 };
+
 
 export const getAnalyticsServiceClient = (): ServiceClient => {
   if (!analyticsServiceClientInstance) {
@@ -130,8 +131,8 @@ export const authServiceClient = {
 };
 
 export const aiServiceClient = {
-  get: (url: string, config?: AxiosRequestConfig) => getAiServiceClient().get(url, config),
-  post: (url: string, data?: any, config?: AxiosRequestConfig) => getAiServiceClient().post(url, data, config),
-  put: (url: string, data?: any, config?: AxiosRequestConfig) => getAiServiceClient().put(url, data, config),
-  delete: (url: string, config?: AxiosRequestConfig) => getAiServiceClient().delete(url, config)
+  get: (url: string, config?: AxiosRequestConfig) => getAIServiceClient().get(url, config),
+  post: (url: string, data?: any, config?: AxiosRequestConfig) => getAIServiceClient().post(url, data, config),
+  put: (url: string, data?: any, config?: AxiosRequestConfig) => getAIServiceClient().put(url, data, config),
+  delete: (url: string, config?: AxiosRequestConfig) => getAIServiceClient().delete(url, config)
 };
