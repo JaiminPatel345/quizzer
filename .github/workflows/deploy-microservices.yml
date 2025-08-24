@@ -63,8 +63,8 @@ jobs:
           { name: 'auth-service', path: 'services/auth-service', port: 3001, changed: '${{ needs.detect-changes.outputs.auth-service }}' },
           { name: 'quiz-service', path: 'services/quiz-service', port: 3002, changed: '${{ needs.detect-changes.outputs.quiz-service }}' },
           { name: 'ai-service', path: 'services/ai-service', port: 3003, changed: '${{ needs.detect-changes.outputs.ai-service }}' },
-          { name: 'analytics-service', path: 'services/analytics-service', port: 3004, changed: '${{ needs.detect-changes.outputs.analytics-service }}' },
-          { name: 'submission-service', path: 'services/submission-service', port: 3005, changed: '${{ needs.detect-changes.outputs.submission-service }}' }
+          { name: 'submission-service', path: 'services/submission-service', port: 3004, changed: '${{ needs.detect-changes.outputs.submission-service }}' },
+          { name: 'analytics-service', path: 'services/analytics-service', port: 3005, changed: '${{ needs.detect-changes.outputs.analytics-service }}' }
         ]
     
     steps:
@@ -143,8 +143,8 @@ jobs:
             AUTH_SERVICE_URL=https://quizzer-auth-service.${{ env.CONTAINER_APP_ENVIRONMENT }}.southindia.azurecontainerapps.io
             QUIZ_SERVICE_URL=https://quizzer-quiz-service.${{ env.CONTAINER_APP_ENVIRONMENT }}.southindia.azurecontainerapps.io
             AI_SERVICE_URL=https://quizzer-ai-service.${{ env.CONTAINER_APP_ENVIRONMENT }}.southindia.azurecontainerapps.io
-            ANALYTICS_SERVICE_URL=https://quizzer-analytics-service.${{ env.CONTAINER_APP_ENVIRONMENT }}.southindia.azurecontainerapps.io
             SUBMISSION_SERVICE_URL=https://quizzer-submission-service.${{ env.CONTAINER_APP_ENVIRONMENT }}.southindia.azurecontainerapps.io
+            ANALYTICS_SERVICE_URL=https://quizzer-analytics-service.${{ env.CONTAINER_APP_ENVIRONMENT }}.southindia.azurecontainerapps.io
 
   deploy-gateway:
     needs: [detect-changes, build-and-deploy]

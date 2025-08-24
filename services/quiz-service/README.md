@@ -25,7 +25,15 @@
 **Authentication**: None  
 **Response**: 
 ```json
-
+{
+    "success": true,
+    "message": "Quiz Service API",
+    "version": "1.0.0",
+    "endpoints": {
+        "health": "/health",
+        "quiz": "/api/quiz"
+    }
+}
 ```
 
 ### Health Check
@@ -33,7 +41,12 @@
 **Authentication**: None  
 **Response**:
 ```json
-
+{
+    "success": true,
+    "service": "quiz-service",
+    "status": "healthy",
+    "timestamp": "2025-08-24T15:12:46.814Z"
+}
 ```
 
 ---

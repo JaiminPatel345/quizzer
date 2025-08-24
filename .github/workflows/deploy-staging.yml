@@ -23,8 +23,8 @@ jobs:
           { name: 'auth-service', path: 'services/auth-service', port: 3001 },
           { name: 'quiz-service', path: 'services/quiz-service', port: 3002 },
           { name: 'ai-service', path: 'services/ai-service', port: 3003 },
-          { name: 'analytics-service', path: 'services/analytics-service', port: 3004 },
-          { name: 'submission-service', path: 'services/submission-service', port: 3005 }
+          { name: 'submission-service', path: 'services/submission-service', port: 3004 },
+          { name: 'analytics-service', path: 'services/analytics-service', port: 3005 }
         ]
     
     steps:
