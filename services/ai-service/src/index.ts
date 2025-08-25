@@ -12,6 +12,7 @@ import { connectDatabase } from './config/database.js';
 import { logger } from './utils/logger.js';
 import mongoose from 'mongoose';
 
+const HOST = process.env.HOST || '0.0.0.0';
 const PORT = Number(process.env.PORT) || Number(process.env.AI_SERVICE_PORT) || 3002;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
@@ -27,9 +28,9 @@ async function startServer(): Promise<void> {
     const app = aiApp.getExpressApp();
 
     // Start server
-    const server = app.listen(PORT, () => {
-      console.log(`✅ AI Service running on port ${PORT} in ${NODE_ENV} mode`);
-      logger.info(`AI Service running on port ${PORT} in ${NODE_ENV} mode`);
+    const server = app.listen(PORT, HOST, () => {
+      console.log(`✅ AI Service running on http://${HOST}:${PORT} in ${NODE_ENV} mode`);
+      logger.info(`AI Service running on http://${HOST}:${PORT} in ${NODE_ENV} mode`);
     });
 
     // Graceful shutdown

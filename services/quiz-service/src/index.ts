@@ -12,6 +12,7 @@ import { connectDatabase } from './config/database.js';
 import { logger } from './utils/logger.js';
 import mongoose from 'mongoose';
 
+const HOST = process.env.HOST || '0.0.0.0';
 const PORT = Number(process.env.PORT) || Number(process.env.QUIZ_SERVICE_PORT) || 3003;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
@@ -28,9 +29,9 @@ async function startServer(): Promise<void> {
 
 
     // Start server
-    const server = app.listen(PORT, () => {
-      console.log(`✅ Quiz Service running on port ${PORT} in ${NODE_ENV} mode`);
-      logger.info(`Quiz Service running on port ${PORT} in ${NODE_ENV} mode`);
+    const server = app.listen(PORT, HOST, () => {
+      console.log(`✅ Quiz Service running on http://${HOST}:${PORT} in ${NODE_ENV} mode`);
+      logger.info(`Quiz Service running on http://${HOST}:${PORT} in ${NODE_ENV} mode`);
     });
 
     // Graceful shutdown

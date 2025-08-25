@@ -26,9 +26,6 @@ RUN yarn workspace auth-service build
 # Production stage
 FROM node:20-alpine AS production
 
-RUN apk add --no-cache dumb-init
-RUN addgroup -g 1001 -S nodejs && adduser -S nodeuser -u 1001
-
 WORKDIR /app
 
 # Copy runtime manifest and lockfile
@@ -42,14 +39,11 @@ RUN corepack enable \
 
 COPY --from=builder /workspace/services/auth-service/dist ./dist
 
-RUN mkdir -p logs && chown -R nodeuser:nodejs /app
+# Expose the port
+EXPOSE 3001
 
-USER nodeuser
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=3001
 
-EXPOSE 80
-
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:80/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
-
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/index.js"]
+CMD ["yarn", "start"]

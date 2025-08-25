@@ -8,15 +8,15 @@ difficulty, quiz retry functionality, and comprehensive analytics with leaderboa
 if there is any change in Deployment, please refer this docs on https://jaiminpatel345.github.io/docs
 (Yes I don't put code on GitHub, this is only docs)
 
-## 🌐 Live Service URLs
+# 🌐 Live Service URLs
 
-| Service                   | Live URL                                                          | Health Check                                                                            |
-|---------------------------|-------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
-| 🔐 **Auth Service**       | http://quizzer-auth-1756088522.southindia.azurecontainer.io       | [Health](http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001/health)       |
-| 🤖 **AI Service**         | http://quizzer-ai-1756068070.southindia.azurecontainer.io         | [Health](http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002/health)         |
-| 📝 **Quiz Service**       | http://quizzer-quiz-1756068070.southindia.azurecontainer.io       | [Health](http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003/health)       |
-| 📋 **Submission Service** | http://quizzer-submission-1756068070.southindia.azurecontainer.io | [Health](http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/health) |
-| 📊 **Analytics Service**  | http://quizzer-analytics-1756068070.southindia.azurecontainer.io  | [Health](http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/health)  |
+| Service                   | Live URL                                                           | localhost Port | Health Check                                                                             |
+|---------------------------|--------------------------------------------------------------------|--------------  |------------------------------------------------------------------------------------------|
+| 🔐 **Auth Service**       | http://quizzer-auth-1756088522.southindia.azurecontainer.io       | 3001           | [Health](http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001/health)       |
+| 🤖 **AI Service**         | http://quizzer-ai-1756068070.southindia.azurecontainer.io         | 3003           | [Health](http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002/health)         |
+| 📝 **Quiz Service**       | http://quizzer-quiz-1756068070.southindia.azurecontainer.io       | 3002           | [Health](http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003/health)       |
+| 📋 **Submission Service** | http://quizzer-submission-1756068070.southindia.azurecontainer.io | 3004           | [Health](http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/health) |
+| 📊 **Analytics Service**  | http://quizzer-analytics-1756068070.southindia.azurecontainer.io  | 3005           | [Health](http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/health)  |
 
 ## 📋 Table of Contents
 
@@ -36,7 +36,6 @@ if there is any change in Deployment, please refer this docs on https://jaiminpa
 ```
 ┌─────────────────┐    ┌───────��─────────┐    ┌────────────��──────┐
 │   Auth Service  │    │   Quiz Service  │    │   AI Service      │
-│  Azure Live ✅  │    │  Azure Live ✅  │    │  Azure Live ✅    │
 │                 │    │                 │    │                   │ 
 │ • Authentication│    │ • Quiz CRUD     │    │ • Question Gen    │
 │ • User Profile  │    │ • Content Mgmt  │    │ • AI Evaluation   │
@@ -46,7 +45,6 @@ if there is any change in Deployment, please refer this docs on https://jaiminpa
 
 ┌──────────────────┐    ┌─────────────────┐    
 │Submission Svc    │    │Analytics Service│    
-│  Azure Live ✅   │    │  Azure Live ✅  │    
 │                  │    │                 │    
 │ • Quiz Scoring   │    │ • Performance   │    
 │ • Smart Grading  │    │ • Leaderboards  │    
