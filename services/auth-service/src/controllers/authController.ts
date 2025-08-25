@@ -21,7 +21,11 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         username,
         email: `${username}@mock.com`,
         password: hashedPassword,
-        profile: { preferredSubjects: [] },
+        profile: { 
+          firstName: 'Mock',
+          lastName: 'User',
+          preferredSubjects: [] 
+        },
         preferences: {
           emailNotifications: true,
           difficulty: 'adaptive'
@@ -84,7 +88,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       username,
       email,
       password: hashedPassword,
-      profile: profile || { preferredSubjects: [] },
+      profile: {
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        grade: profile?.grade,
+        preferredSubjects: profile?.preferredSubjects || []
+      },
       preferences: preferences || {
         emailNotifications: true,
         difficulty: 'adaptive'

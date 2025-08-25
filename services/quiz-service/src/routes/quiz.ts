@@ -89,7 +89,7 @@ router.post('/:quizId/duplicate',
     duplicateQuiz,
 );
 
-router.post('/:quizId/question/:questionId/hint',
+router.get('/:quizId/question/:questionId/hint',
     authenticateToken,
     quizLimiter,
     validateRequest(generateHintForQuestionSchema),

@@ -15,8 +15,8 @@ export interface IUser extends Document {
 }
 
 const UserProfileSchema = new Schema<UserProfile>({
-  firstName: { type: String, trim: true },
-  lastName: { type: String, trim: true },
+  firstName: { type: String, required: true, trim: true, minlength: 1, maxlength: 50 },
+  lastName: { type: String, required: true, trim: true, minlength: 1, maxlength: 50 },
   grade: { type: Number, min: 1, max: 12 },
   preferredSubjects: [{ type: String, trim: true }]
 }, { _id: false });
@@ -61,7 +61,7 @@ const UserSchema = new Schema<IUser>({
   },
   profile: {
     type: UserProfileSchema,
-    default: () => ({ preferredSubjects: [] })
+    required: true
   },
   preferences: {
     type: UserPreferencesSchema,

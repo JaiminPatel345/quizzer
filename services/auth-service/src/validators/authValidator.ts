@@ -34,12 +34,16 @@ export const registerSchema = {
     }),
 
     profile: Joi.object({
-      firstName: Joi.string().trim().max(50).optional().messages({
+      firstName: Joi.string().trim().min(1).max(50).required().messages({
+        'string.min': 'First name is required',
         'string.max': 'First name cannot exceed 50 characters',
+        'any.required': 'First name is required',
       }),
 
-      lastName: Joi.string().trim().max(50).optional().messages({
+      lastName: Joi.string().trim().min(1).max(50).required().messages({
+        'string.min': 'Last name is required',
         'string.max': 'Last name cannot exceed 50 characters',
+        'any.required': 'Last name is required',
       }),
 
       grade: Joi.number().integer().min(1).max(12).optional().messages({
@@ -55,7 +59,9 @@ export const registerSchema = {
           messages({
             'array.base': 'Preferred subjects must be an array',
           }),
-    }).optional(),
+    }).required().messages({
+      'any.required': 'Profile information is required',
+    }),
 
     preferences: Joi.object({
       emailNotifications: Joi.boolean().optional().messages({

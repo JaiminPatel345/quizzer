@@ -4,8 +4,8 @@ import type { Types } from 'mongoose';
 export type ObjectId = Types.ObjectId;
 
 export interface UserProfile {
-  firstName?: string;
-  lastName?: string;
+  firstName: string;
+  lastName: string;
   grade?: number;
   preferredSubjects: string[];
 }

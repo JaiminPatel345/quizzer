@@ -3,11 +3,13 @@ import Joi from 'joi';
 export const updateProfileSchema = {
   body: Joi.object({
     profile: Joi.object({
-      firstName: Joi.string().trim().max(50).optional().allow('').messages({
+      firstName: Joi.string().trim().min(1).max(50).optional().messages({
+        'string.min': 'First name cannot be empty',
         'string.max': 'First name cannot exceed 50 characters',
       }),
 
-      lastName: Joi.string().trim().max(50).optional().allow('').messages({
+      lastName: Joi.string().trim().min(1).max(50).optional().messages({
+        'string.min': 'Last name cannot be empty',
         'string.max': 'Last name cannot exceed 50 characters',
       }),
 
@@ -25,10 +27,15 @@ export const updateProfileSchema = {
           }),
 
       preferredSubjects: Joi.array().
-          items(Joi.string().trim().max(100)).
+          items(Joi.string().trim().min(1).max(100)).
+          min(0).
+          max(10).
           optional().
           messages({
             'array.base': 'Preferred subjects must be an array',
+            'array.max': 'Cannot have more than 10 preferred subjects',
+            'string.min': 'Subject name cannot be empty',
+            'string.max': 'Subject name cannot exceed 100 characters',
           }),
     }).optional(),
 

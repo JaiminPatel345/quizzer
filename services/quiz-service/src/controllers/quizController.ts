@@ -653,6 +653,10 @@ export const generateHintForQuestion = async (
       throw new NotFoundError('Quiz not found');
     }
 
+    if(quiz.createdBy.toString() !== req.userId?.toString()) {
+      throw new UnauthorizedError('You can only generate hints for your own quizzes');
+    }
+
     const question = quiz.questions.find(q => q.questionId === questionId);
     if (!question) {
       throw new NotFoundError('Question not found in this quiz');

@@ -23,18 +23,51 @@ export const handleError = (res: Response, functionName: string, error: AppError
     message: error.message,
     stack: error.stack,
     functionName,
-    timestamp: new Date().toISOString(),
-    ...(error as AppError).statusCode && { statusCode: (error as AppError).statusCode }
+    statusCode: (error as AppError).statusCode
   });
 
   let statusCode = 500;
   let message = 'Internal Server Error';
   let details: any = null;
 
-  if ((error as AppError).isOperational) {
-    statusCode = (error as AppError).statusCode || 500;
+  // Check if it's our custom operational error
+  if ((error as AppError).isOperational && (error as AppError).statusCode) {
+    statusCode = (error as AppError).statusCode!;
     message = error.message;
-  } else if (error.name === 'ValidationError') {
+  } 
+  // Check for specific custom error types
+  else if (error instanceof BadRequestError) {
+    statusCode = 400;
+    message = error.message;
+  }
+  else if (error instanceof NotFoundError) {
+    statusCode = 404;
+    message = error.message;
+  }
+  else if (error instanceof UnauthorizedError) {
+    statusCode = 401;
+    message = error.message;
+  }
+  // Handle axios errors from service calls
+  else if ((error as any).response) {
+    const axiosError = error as any;
+    statusCode = axiosError.response.status || 500;
+    
+    // Try to extract the error message from the response
+    if (axiosError.response.data?.error?.message) {
+      message = axiosError.response.data.error.message;
+    } else if (axiosError.response.data?.message) {
+      message = axiosError.response.data.message;
+    } else {
+      message = axiosError.message || 'Service communication error';
+    }
+    
+    // Extract additional details if available
+    if (axiosError.response.data?.error?.details) {
+      details = axiosError.response.data.error.details;
+    }
+  }
+  else if (error.name === 'ValidationError') {
     statusCode = 400;
     message = 'Validation Error';
     details = Object.values((error as any).errors).map((err: any) => ({
@@ -54,6 +87,7 @@ export const handleError = (res: Response, functionName: string, error: AppError
     success: false,
     error: {
       message,
+      statusCode,
       functionName,
       timestamp: new Date().toISOString()
     }
