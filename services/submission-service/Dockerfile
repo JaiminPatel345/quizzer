@@ -45,10 +45,10 @@ RUN mkdir -p logs && chown -R nodeuser:nodejs /app
 
 USER nodeuser
 
-EXPOSE 3004
+EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3004/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+  CMD node -e "require('http').get('http://localhost:80/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "dist/index.js"]

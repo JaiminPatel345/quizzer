@@ -87,6 +87,9 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+      - name: Normalize owner to lowercase (for deploy job)
+        run: echo "OWNER_LC=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Azure login
         uses: azure/login@v2
         with:
@@ -121,7 +124,9 @@ jobs:
             REGISTRY_SERVER=ghcr.io
             REGISTRY_USER=${{ secrets.GHCR_USERNAME }}
             REGISTRY_PASS='${{ secrets.GHCR_TOKEN }}'
-            OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+            
+            # Debug: verify OWNER_LC is set
+            echo "Repository owner (normalized): '${{ env.OWNER_LC }}'"
 
             # Bring GitHub secrets into bash vars for safe checks
             MONGODB_URI='${{ secrets.MONGODB_URI }}'
@@ -205,7 +210,7 @@ jobs:
             add_envref AUTH_ENVREFS JWT_SECRET jwt-secret "$JWT_SECRET"
             upsert_app \
               quizzer-auth-service \
-              ghcr.io/$OWNER_LC/quizzer-auth-service:${{ github.sha }} \
+              ghcr.io/${{ env.OWNER_LC }}/quizzer-auth-service:${{ github.sha }} \
               3001 \
               AUTH_SECRETS \
               AUTH_ENV \
@@ -219,7 +224,7 @@ jobs:
             add_envref QUIZ_ENVREFS MONGODB_URI mongodb-uri "$MONGODB_URI"
             upsert_app \
               quizzer-quiz-service \
-              ghcr.io/$OWNER_LC/quizzer-quiz-service:${{ github.sha }} \
+              ghcr.io/${{ env.OWNER_LC }}/quizzer-quiz-service:${{ github.sha }} \
               3002 \
               QUIZ_SECRETS \
               QUIZ_ENV \
@@ -237,7 +242,7 @@ jobs:
             add_envref AI_ENVREFS GROQ_API_KEY groq-api-key "$GROQ_API_KEY"
             upsert_app \
               quizzer-ai-service \
-              ghcr.io/$OWNER_LC/quizzer-ai-service:${{ github.sha }} \
+              ghcr.io/${{ env.OWNER_LC }}/quizzer-ai-service:${{ github.sha }} \
               3003 \
               AI_SECRETS \
               AI_ENV \
@@ -251,7 +256,7 @@ jobs:
             add_envref SUB_ENVREFS MONGODB_URI mongodb-uri "$MONGODB_URI"
             upsert_app \
               quizzer-submission-service \
-              ghcr.io/$OWNER_LC/quizzer-submission-service:${{ github.sha }} \
+              ghcr.io/${{ env.OWNER_LC }}/quizzer-submission-service:${{ github.sha }} \
               3004 \
               SUB_SECRETS \
               SUB_ENV \
@@ -265,7 +270,7 @@ jobs:
             add_envref ANA_ENVREFS MONGODB_URI mongodb-uri "$MONGODB_URI"
             upsert_app \
               quizzer-analytics-service \
-              ghcr.io/$OWNER_LC/quizzer-analytics-service:${{ github.sha }} \
+              ghcr.io/${{ env.OWNER_LC }}/quizzer-analytics-service:${{ github.sha }} \
               3005 \
               ANA_SECRETS \
               ANA_ENV \

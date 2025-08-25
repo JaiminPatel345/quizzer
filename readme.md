@@ -1,20 +1,22 @@
 # AI Quizzer - Live on Azure! 🚀
 
-A scalable microservices-based quiz platform with AI-powered question generation, intelligent scoring, adaptive difficulty, quiz retry functionality, and comprehensive analytics with leaderboards.
+A scalable microservices-based quiz platform with AI-powered question generation, intelligent scoring, adaptive
+difficulty, quiz retry functionality, and comprehensive analytics with leaderboards.
 
 **🌐 LIVE DEPLOYMENT:** All services are now running on Azure Container Instances!
 
-You can also see docs on https://jaiminpatel345.github.io/docs
+if there is any change in Deployment, please refer this docs on https://jaiminpatel345.github.io/docs
+(Yes I don't put code on GitHub, this is only docs)
 
 ## 🌐 Live Service URLs
 
-| Service | Live URL | Health Check |
-|---------|----------|--------------|
-| 🔐 **Auth Service** | http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001 | [Health](http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001/health) |
-| 🤖 **AI Service** | http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002 | [Health](http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002/health) |
-| 📝 **Quiz Service** | http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003 | [Health](http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003/health) |
-| 📋 **Submission Service** | http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004 | [Health](http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/health) |
-| 📊 **Analytics Service** | http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005 | [Health](http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/health) |
+| Service                   | Live URL                                                          | Health Check                                                                            |
+|---------------------------|-------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| 🔐 **Auth Service**       | http://quizzer-auth-1756088522.southindia.azurecontainer.io       | [Health](http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001/health)       |
+| 🤖 **AI Service**         | http://quizzer-ai-1756068070.southindia.azurecontainer.io         | [Health](http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002/health)         |
+| 📝 **Quiz Service**       | http://quizzer-quiz-1756068070.southindia.azurecontainer.io       | [Health](http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003/health)       |
+| 📋 **Submission Service** | http://quizzer-submission-1756068070.southindia.azurecontainer.io | [Health](http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/health) |
+| 📊 **Analytics Service**  | http://quizzer-analytics-1756068070.southindia.azurecontainer.io  | [Health](http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/health)  |
 
 ## 📋 Table of Contents
 
@@ -56,13 +58,13 @@ You can also see docs on https://jaiminpatel345.github.io/docs
 
 ## 📊 Services Overview
 
-| Service                  | Live URL | Database                | Purpose                                     | Status     |
-|--------------------------|----------|-------------------------|---------------------------------------------|------------|
-| **Auth Service**         | [Live](http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001) | MongoDB Atlas          | User authentication & profile management    | ✅ Live   |
-| **Quiz Service**         | [Live](http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003) | MongoDB Atlas          | Quiz content management & CRUD operations   | ✅ Live   |
-| **AI Service**           | [Live](http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002) | MongoDB Atlas          | AI-powered question generation & evaluation | ✅ Live   |
-| **Submission Service**   | [Live](http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004) | MongoDB Atlas | Quiz submission & scoring system | ✅ Live |
-| **Analytics Service**    | [Live](http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005) | MongoDB Atlas | Performance analytics & leaderboards | ✅ Live |
+| Service                | Live URL                                                                       | Database      | Purpose                                     | Status |
+|------------------------|--------------------------------------------------------------------------------|---------------|---------------------------------------------|--------|
+| **Auth Service**       | [Live](http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001)       | MongoDB Atlas | User authentication & profile management    | ✅ Live |
+| **Quiz Service**       | [Live](http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003)       | MongoDB Atlas | Quiz content management & CRUD operations   | ✅ Live |
+| **AI Service**         | [Live](http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002)         | MongoDB Atlas | AI-powered question generation & evaluation | ✅ Live |
+| **Submission Service** | [Live](http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004) | MongoDB Atlas | Quiz submission & scoring system            | ✅ Live |
+| **Analytics Service**  | [Live](http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005)  | MongoDB Atlas | Performance analytics & leaderboards        | ✅ Live |
 
 ## 🧪 Quick Test Commands
 
@@ -181,6 +183,7 @@ curl http://localhost:3005/health  # Analytics Service
 ## � API Flows & Testing
 
 ### Authentication Flow
+
 All protected endpoints require Bearer token authentication. Start by registering and logging in:
 
 **Step 1**: Register user → `POST http://localhost:3001/api/auth/register`  
@@ -188,6 +191,7 @@ All protected endpoints require Bearer token authentication. Start by registerin
 **Step 3**: Use returned JWT token in Authorization header for all subsequent requests
 
 ### Flow 1: Basic Quiz Creation & Submission
+
 **Purpose**: Create a quiz manually and submit answers
 
 1. **Auth**: Login via Auth Service → Get Bearer token
@@ -197,15 +201,17 @@ All protected endpoints require Bearer token authentication. Start by registerin
 5. **View Results**: `GET http://localhost:3004/api/submission/:submissionId`
 
 ### Flow 2: AI-Powered Quiz Generation
+
 **Purpose**: Generate quiz using AI and take it
 
-1. **Auth**: Login via Auth Service → Get Bearer token  
+1. **Auth**: Login via Auth Service → Get Bearer token
 2. **Generate Questions**: `POST http://localhost:3003/api/ai/generate/questions` with requirements
 3. **Create AI Quiz**: `POST http://localhost:3002/api/quiz/generate` with AI parameters
 4. **Take Quiz**: Submit answers using Submission Service
 5. **AI Evaluation**: Enable `requestEvaluation: true` for AI feedback
 
 ### Flow 3: Hint Generation During Quiz
+
 **Purpose**: Get AI-powered hints while taking a quiz
 
 1. **Auth**: Login via Auth Service → Get Bearer token
@@ -215,6 +221,7 @@ All protected endpoints require Bearer token authentication. Start by registerin
 5. **Submit with Hint Tracking**: Include `hintsUsed` count in submission
 
 ### Flow 4: Adaptive Learning Experience
+
 **Purpose**: Create personalized adaptive quizzes
 
 1. **Auth**: Login via Auth Service → Get Bearer token
@@ -224,6 +231,7 @@ All protected endpoints require Bearer token authentication. Start by registerin
 5. **Analyze Results**: Get personalized suggestions from Quiz Service
 
 ### Flow 5: Quiz Retry & Attempt Management
+
 **Purpose**: Retry quizzes and compare performance across attempts
 
 1. **Auth**: Login via Auth Service → Get Bearer token
@@ -233,6 +241,7 @@ All protected endpoints require Bearer token authentication. Start by registerin
 5. **Get Best Attempt**: `GET http://localhost:3004/api/submission/quiz/:quizId/best`
 
 ### Flow 6: Leaderboards & Analytics
+
 **Purpose**: View rankings and analyze performance
 
 1. **View Public Leaderboard**: `GET http://localhost:3005/api/leaderboard` (no auth needed)
@@ -242,6 +251,7 @@ All protected endpoints require Bearer token authentication. Start by registerin
 5. **View Progress Trends**: `GET http://localhost:3005/api/analytics/trends`
 
 ### Flow 7: Real-time Difficulty Adjustment
+
 **Purpose**: Dynamically adjust quiz difficulty during session
 
 1. **Auth**: Login via Auth Service → Get Bearer token
@@ -251,10 +261,12 @@ All protected endpoints require Bearer token authentication. Start by registerin
 5. **Continue Quiz**: Use adjusted questions for remaining quiz items
 
 **Postman Testing Tips**:
+
 - **Base URLs**: Auth(3001), Quiz(3002), AI(3003), Submission(3004), Analytics(3005)
 - **Headers**: Always include `Authorization: Bearer <token>` and `Content-Type: application/json`
 - **Rate Limits**: AI Service has strict limits (10-30 req/5min), others are more generous
 - **Error Handling**: All services return consistent error format with HTTP status codes
+
 ---
 
 ## 📚 Service Documentation
@@ -287,20 +299,20 @@ All protected endpoints require Bearer token authentication. Start by registerin
 
 #### Key Endpoints
 
-| Method   | Endpoint                        | Purpose                    | Auth Required |
-|----------|---------------------------------|----------------------------|---------------|
-| `GET`    | `/api/quiz`                     | Get quizzes with filtering | Optional      |
-| `GET`    | `/api/quiz/:quizId`             | Get specific quiz          | Optional*     |
-| `POST`   | `/api/quiz`                     | Create new quiz            | Yes           |
-| `POST`   | `/api/quiz/generate`            | Generate AI quiz           | Yes           |
-| `POST`   | `/api/quiz/adaptive`            | Create adaptive quiz       | Yes           |
-| `PUT`    | `/api/quiz/:quizId`             | Update quiz metadata       | Yes           |
-| `DELETE` | `/api/quiz/:quizId`             | Soft delete quiz           | Yes           |
-| `POST`   | `/api/quiz/:quizId/duplicate`   | Duplicate existing quiz    | Yes           |
-| `POST`   | `/api/quiz/:quizId/submit`      | Submit quiz (proxy)        | Yes           |
-| `GET`    | `/api/quiz/history`             | Get quiz history           | Yes           |
-| `POST`   | `/api/quiz/:quizId/question/:questionId/hint` | Generate hint | Yes |
-| `POST`   | `/api/quiz/adjust-difficulty`   | Real-time difficulty adjust| Yes           |
+| Method   | Endpoint                                      | Purpose                     | Auth Required |
+|----------|-----------------------------------------------|-----------------------------|---------------|
+| `GET`    | `/api/quiz`                                   | Get quizzes with filtering  | Optional      |
+| `GET`    | `/api/quiz/:quizId`                           | Get specific quiz           | Optional*     |
+| `POST`   | `/api/quiz`                                   | Create new quiz             | Yes           |
+| `POST`   | `/api/quiz/generate`                          | Generate AI quiz            | Yes           |
+| `POST`   | `/api/quiz/adaptive`                          | Create adaptive quiz        | Yes           |
+| `PUT`    | `/api/quiz/:quizId`                           | Update quiz metadata        | Yes           |
+| `DELETE` | `/api/quiz/:quizId`                           | Soft delete quiz            | Yes           |
+| `POST`   | `/api/quiz/:quizId/duplicate`                 | Duplicate existing quiz     | Yes           |
+| `POST`   | `/api/quiz/:quizId/submit`                    | Submit quiz (proxy)         | Yes           |
+| `GET`    | `/api/quiz/history`                           | Get quiz history            | Yes           |
+| `POST`   | `/api/quiz/:quizId/question/:questionId/hint` | Generate hint               | Yes           |
+| `POST`   | `/api/quiz/adjust-difficulty`                 | Real-time difficulty adjust | Yes           |
 
 **📁 For detailed payloads:** See `services/quiz-service/README.md`
 
@@ -314,14 +326,14 @@ All protected endpoints require Bearer token authentication. Start by registerin
 
 #### Key Endpoints
 
-| Method | Endpoint                           | Purpose                        | Auth Required |
-|--------|------------------------------------|--------------------------------|---------------|
-| `POST` | `/api/ai/generate/questions`       | Generate standard questions    | Yes           |
-| `POST` | `/api/ai/generate/adaptive`        | Generate adaptive questions    | Yes           |
-| `POST` | `/api/ai/generate/adjust-difficulty` | Real-time difficulty adjustment | Yes         |
-| `POST` | `/api/ai/generate/hint`            | Generate hints for questions   | Yes           |
-| `POST` | `/api/ai/evaluate/submission`      | AI evaluation of submissions   | Yes           |
-| `POST` | `/api/ai/evaluate/suggestions`     | Get improvement suggestions    | Yes           |
+| Method | Endpoint                             | Purpose                         | Auth Required |
+|--------|--------------------------------------|---------------------------------|---------------|
+| `POST` | `/api/ai/generate/questions`         | Generate standard questions     | Yes           |
+| `POST` | `/api/ai/generate/adaptive`          | Generate adaptive questions     | Yes           |
+| `POST` | `/api/ai/generate/adjust-difficulty` | Real-time difficulty adjustment | Yes           |
+| `POST` | `/api/ai/generate/hint`              | Generate hints for questions    | Yes           |
+| `POST` | `/api/ai/evaluate/submission`        | AI evaluation of submissions    | Yes           |
+| `POST` | `/api/ai/evaluate/suggestions`       | Get improvement suggestions     | Yes           |
 
 **📁 For detailed payloads:** See `services/ai-service/README.md`
 
@@ -335,16 +347,16 @@ All protected endpoints require Bearer token authentication. Start by registerin
 
 #### Key Endpoints
 
-| Method | Endpoint                                | Purpose                      | Auth Required |
-|--------|-----------------------------------------|------------------------------|---------------|
-| `POST` | `/api/submission/submit`                | Submit quiz answers          | Yes           |
-| `GET`  | `/api/submission`                       | Get user submissions         | Yes           |
-| `GET`  | `/api/submission/:submissionId`         | Get specific submission      | Yes           |
-| `GET`  | `/api/submission/:submissionId/details` | Get detailed submission      | Yes           |
-| `GET`  | `/api/submission/quiz/:quizId/attempts` | Get all quiz attempts        | Yes           |
-| `POST` | `/api/submission/quiz/:quizId/retry`    | Retry quiz (new attempt)     | Yes           |
-| `GET`  | `/api/submission/quiz/:quizId/best`     | Get best attempt for quiz    | Yes           |
-| `GET`  | `/api/submission/quiz/:quizId/compare`  | Compare two quiz attempts    | Yes           |
+| Method | Endpoint                                | Purpose                   | Auth Required |
+|--------|-----------------------------------------|---------------------------|---------------|
+| `POST` | `/api/submission/submit`                | Submit quiz answers       | Yes           |
+| `GET`  | `/api/submission`                       | Get user submissions      | Yes           |
+| `GET`  | `/api/submission/:submissionId`         | Get specific submission   | Yes           |
+| `GET`  | `/api/submission/:submissionId/details` | Get detailed submission   | Yes           |
+| `GET`  | `/api/submission/quiz/:quizId/attempts` | Get all quiz attempts     | Yes           |
+| `POST` | `/api/submission/quiz/:quizId/retry`    | Retry quiz (new attempt)  | Yes           |
+| `GET`  | `/api/submission/quiz/:quizId/best`     | Get best attempt for quiz | Yes           |
+| `GET`  | `/api/submission/quiz/:quizId/compare`  | Compare two quiz attempts | Yes           |
 
 **📁 For detailed payloads:** See `services/submission-service/README.md`
 
@@ -358,16 +370,16 @@ All protected endpoints require Bearer token authentication. Start by registerin
 
 #### Key Endpoints
 
-| Method | Endpoint                                    | Purpose                        | Auth Required |
-|--------|---------------------------------------------|--------------------------------|---------------|
-| `GET`  | `/api/analytics/performance`                | Get overall user performance   | Yes           |
-| `GET`  | `/api/analytics/performance/:subject/:grade`| Get subject-specific performance| Yes          |
-| `GET`  | `/api/analytics/trends`                     | Get performance trends         | Yes           |
-| `GET`  | `/api/analytics/topics`                     | Get topic-wise analysis        | Yes           |
-| `POST` | `/api/analytics/performance/update`         | Update performance (internal)  | Yes           |
-| `GET`  | `/api/leaderboard`                          | Get leaderboard rankings       | Optional      |
-| `GET`  | `/api/leaderboard/top`                      | Get top performers             | No            |
-| `GET`  | `/api/leaderboard/my-rank`                  | Get user's rank                | Yes           |
+| Method | Endpoint                                     | Purpose                          | Auth Required |
+|--------|----------------------------------------------|----------------------------------|---------------|
+| `GET`  | `/api/analytics/performance`                 | Get overall user performance     | Yes           |
+| `GET`  | `/api/analytics/performance/:subject/:grade` | Get subject-specific performance | Yes           |
+| `GET`  | `/api/analytics/trends`                      | Get performance trends           | Yes           |
+| `GET`  | `/api/analytics/topics`                      | Get topic-wise analysis          | Yes           |
+| `POST` | `/api/analytics/performance/update`          | Update performance (internal)    | Yes           |
+| `GET`  | `/api/leaderboard`                           | Get leaderboard rankings         | Optional      |
+| `GET`  | `/api/leaderboard/top`                       | Get top performers               | No            |
+| `GET`  | `/api/leaderboard/my-rank`                   | Get user's rank                  | Yes           |
 
 **📁 For detailed payloads:** See `services/analytics-service/README.md`
 

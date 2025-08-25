@@ -55,12 +55,10 @@ RUN mkdir -p logs && chown -R nodeuser:nodejs /app
 # Switch to non-root user
 USER nodeuser
 
-# Correct service port
-EXPOSE 3003
+EXPOSE 80
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3003/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+  CMD node -e "require('http').get('http://localhost:80/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Start the application
 ENTRYPOINT ["dumb-init", "--"]
