@@ -653,7 +653,7 @@ export const generateHintForQuestion = async (
       throw new NotFoundError('Quiz not found');
     }
 
-    if(quiz.createdBy.toString() !== req.userId?.toString()) {
+    if(!quiz.isPublic && quiz.createdBy.toString() !== req.userId?.toString()) {
       throw new UnauthorizedError('You can only generate hints for your own quizzes');
     }
 
@@ -738,7 +738,7 @@ export const generateHintForQuestion = async (
 export const submitQuiz = async (
     req: AuthRequest, res: Response): Promise<void> => {
   try {
-    if (!req.user) {
+    if (!req.user || !req.userId) {
       throw new UnauthorizedError('User not authenticated');
     }
 
@@ -765,13 +765,34 @@ export const submitQuiz = async (
       throw new BadRequestError('Start time is required');
     }
 
-    // Call submission service with proper error handling
+    // 1. First, get the quiz from our database
+    const quiz = await Quiz.findById(quizId);
+    if (!quiz) {
+      throw new NotFoundError('Quiz not found');
+    }
+
+    // Check if user has access to this quiz
+    if (!quiz.isPublic && quiz.createdBy?.toString() !== req.userId.toString()) {
+      throw new UnauthorizedError('You do not have access to this quiz');
+    }
+
+    // Call submission service with quiz data included
     try {
       const submissionServiceClient = getSubmissionServiceClient();
       const submissionResponse = await submissionServiceClient.post<SubmissionResponse>(
           '/api/submission/submit',
           {
-            quizId, answers, startedAt, submittedAt, requestEvaluation,
+            quizId, 
+            answers, 
+            startedAt, 
+            submittedAt, 
+            requestEvaluation,
+            quizData: {
+              _id: quiz._id,
+              title: quiz.title,
+              questions: quiz.questions,
+              metadata: quiz.metadata
+            }
           },
           {
             headers: {Authorization: req.headers.authorization as string},

@@ -13,7 +13,7 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
       throw new UnauthorizedError('User not authenticated');
     }
 
-    const { quizId, answers, startedAt, submittedAt, requestEvaluation = true } = req.body;
+    const { quizId, answers, startedAt, submittedAt, requestEvaluation = true, quizData } = req.body;
     const userId = req.user._id;
 
     // Validate inputs
@@ -25,28 +25,36 @@ export const submitQuiz = async (req: AuthRequest, res: Response): Promise<void>
       throw new BadRequestError('Answers array is required and must not be empty');
     }
 
-    // 1. Fetch quiz from quiz service
+    // Get quiz data - either from request or fetch from quiz service
     let quiz;
-    try {
-      const quizServiceClient = getQuizServiceClient();
-      const quizResponse = await quizServiceClient.get<{
-        success: boolean;
-        data: { quiz: any };
-      }>(`/api/quiz/${quizId}?internal=true`, {
-        headers: { 
-          Authorization: req.headers.authorization as string,
-          'x-internal-service': 'true'
+    if (quizData) {
+      // Use quiz data provided by quiz service
+      quiz = quizData;
+      logger.info('Using quiz data provided by quiz service:', { quizId, title: quiz.title });
+    } else {
+      // Fallback: fetch quiz from quiz service (for backward compatibility)
+      try {
+        const quizServiceClient = getQuizServiceClient();
+        const quizResponse = await quizServiceClient.get<{
+          success: boolean;
+          data: { quiz: any };
+        }>(`/api/quiz/${quizId}?internal=true`, {
+          headers: { 
+            Authorization: req.headers.authorization as string,
+            'x-internal-service': 'true'
+          }
+        });
+
+        if (!quizResponse.success || !quizResponse.data.quiz) {
+          throw new NotFoundError('Quiz not found');
         }
-      });
 
-      if (!quizResponse.success || !quizResponse.data.quiz) {
-        throw new NotFoundError('Quiz not found');
+        quiz = quizResponse.data.quiz;
+        logger.info('Fetched quiz data from quiz service:', { quizId, title: quiz.title });
+      } catch (quizError) {
+        logger.error('Failed to fetch quiz:', { quizId, error: quizError });
+        throw new NotFoundError('Quiz not found or service unavailable');
       }
-
-      quiz = quizResponse.data.quiz;
-    } catch (quizError) {
-      logger.error('Failed to fetch quiz:', { quizId, error: quizError });
-      throw new NotFoundError('Quiz not found or service unavailable');
     }
 
     // 2. Calculate scores using scoring service

@@ -74,6 +74,17 @@ export const submitQuizSchema = {
     .default(false)
     .messages({
       'boolean.base': 'Request evaluation must be a boolean'
+    }),
+
+    quizData: Joi.object({
+      _id: Joi.string().required(),
+      title: Joi.string().required(),
+      questions: Joi.array().items(Joi.object()).required(),
+      metadata: Joi.object().required()
+    })
+    .optional()
+    .messages({
+      'object.base': 'Quiz data must be an object'
     })
   })
 };
