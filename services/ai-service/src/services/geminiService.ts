@@ -188,9 +188,8 @@ class GeminiService {
       const content = response.text();
       const processingTime = Date.now() - startTime;
 
-      // Clean and parse JSON
-      let cleaned = content.replace(/``````\s*$/g, '').trim();
-      const evaluation = JSON.parse(cleaned);
+      // Use the same robust JSON parsing as quiz generation
+      const evaluation = this.parseEvaluationResponse(content);
 
       // Ensure exactly 2 suggestions as per requirements
       if (evaluation.suggestions && evaluation.suggestions.length !== 2) {
@@ -222,6 +221,53 @@ class GeminiService {
       logger.error('Gemini evaluation failed:', {
         error: (error as Error).message,
         processingTime
+      });
+      throw error;
+    }
+  }
+
+  private parseEvaluationResponse(content: string): EvaluationResult {
+    try {
+      // Remove markdown code blocks and other formatting
+      let cleaned = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+      
+      // Remove any trailing backticks or formatting
+      cleaned = cleaned.replace(/``````\s*$/g, '').trim();
+
+      // Find JSON start
+      const jsonStart = Math.min(
+          cleaned.indexOf('[') !== -1 ? cleaned.indexOf('[') : cleaned.length,
+          cleaned.indexOf('{') !== -1 ? cleaned.indexOf('{') : cleaned.length
+      );
+
+      if (jsonStart < cleaned.length) {
+        cleaned = cleaned.substring(jsonStart);
+      }
+
+      // Find JSON end
+      const lastBracket = cleaned.lastIndexOf(']');
+      const lastBrace = cleaned.lastIndexOf('}');
+      const jsonEnd = Math.max(lastBracket, lastBrace);
+
+      if (jsonEnd !== -1) {
+        cleaned = cleaned.substring(0, jsonEnd + 1);
+      }
+
+      const parsed = JSON.parse(cleaned);
+
+      // Ensure required structure
+      const evaluation: EvaluationResult = {
+        suggestions: parsed.suggestions || [],
+        strengths: parsed.strengths || [],
+        weaknesses: parsed.weaknesses || []
+      };
+
+      return evaluation;
+
+    } catch (error) {
+      logger.error('Failed to parse Gemini evaluation response:', {
+        error: (error as Error).message,
+        contentPreview: content.substring(0, 200)
       });
       throw error;
     }
@@ -356,7 +402,8 @@ INSTRUCTIONS:
 3. Identify weaknesses based on wrong answers and knowledge gaps
 4. Make suggestions specific to the subject matter and learning areas shown in the mistakes
 
-Return ONLY this JSON structure without markdown:
+IMPORTANT: Return ONLY valid JSON without any markdown formatting, code blocks, or backticks. Start directly with { and end with }.
+
 {
   "suggestions": [
     "First specific improvement tip based on actual mistakes made",

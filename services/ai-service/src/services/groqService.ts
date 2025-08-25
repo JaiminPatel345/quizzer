@@ -247,9 +247,8 @@ class GroqService {
         throw new Error('No content received from Groq');
       }
 
-      // Clean and parse JSON
-      let cleaned = content.replace(/``````/g, '').trim();
-      const evaluation = JSON.parse(cleaned);
+      // Use robust JSON parsing
+      const evaluation = this.parseEvaluationResponse(content);
 
       // Ensure exactly 2 suggestions as per requirements
       if (evaluation.suggestions && evaluation.suggestions.length !== 2) {
@@ -433,6 +432,53 @@ Return ONLY this JSON structure with NO markdown formatting:
     "Another area needing improvement"
   ]
 }`;
+  }
+
+  private parseEvaluationResponse(content: string): EvaluationResult {
+    try {
+      // Remove markdown code blocks and other formatting
+      let cleaned = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+      
+      // Remove any trailing backticks or formatting
+      cleaned = cleaned.replace(/``````\s*$/g, '').trim();
+
+      // Find JSON start
+      const jsonStart = Math.min(
+          cleaned.indexOf('[') !== -1 ? cleaned.indexOf('[') : cleaned.length,
+          cleaned.indexOf('{') !== -1 ? cleaned.indexOf('{') : cleaned.length
+      );
+
+      if (jsonStart < cleaned.length) {
+        cleaned = cleaned.substring(jsonStart);
+      }
+
+      // Find JSON end
+      const lastBracket = cleaned.lastIndexOf(']');
+      const lastBrace = cleaned.lastIndexOf('}');
+      const jsonEnd = Math.max(lastBracket, lastBrace);
+
+      if (jsonEnd !== -1) {
+        cleaned = cleaned.substring(0, jsonEnd + 1);
+      }
+
+      const parsed = JSON.parse(cleaned);
+
+      // Ensure required structure
+      const evaluation: EvaluationResult = {
+        suggestions: parsed.suggestions || [],
+        strengths: parsed.strengths || [],
+        weaknesses: parsed.weaknesses || []
+      };
+
+      return evaluation;
+
+    } catch (error) {
+      logger.error('Failed to parse Groq evaluation response:', {
+        error: (error as Error).message,
+        contentPreview: content.substring(0, 200)
+      });
+      throw error;
+    }
   }
 }
 
