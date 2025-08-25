@@ -27,6 +27,7 @@ import {
   getQuizByIdSchema,
   getQuizzesSchema,
   updateQuizSchema,
+  adjustQuizDifficultySchema,
 } from '../validators/quizValidator.js';
 import {
   generateHintForQuestionSchema, updateQuestionHintsSchema,
@@ -144,6 +145,7 @@ router.post('/adaptive',
 router.post('/adjust-difficulty',
     authenticateToken,
     quizLimiter,
+    validateRequest(adjustQuizDifficultySchema),
     adjustQuizDifficultyRealTime,
 );
 

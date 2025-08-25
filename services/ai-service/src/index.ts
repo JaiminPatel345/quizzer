@@ -12,8 +12,8 @@ import { connectDatabase } from './config/database.js';
 import { logger } from './utils/logger.js';
 import mongoose from 'mongoose';
 
-const HOST = process.env.HOST || '0.0.0.0';
-const PORT = Number(process.env.PORT) || Number(process.env.AI_SERVICE_PORT) || 3002;
+const HOST = process.env.HOST || '127.0.0.1';
+const PORT = Number(process.env.PORT) || Number(process.env.AI_SERVICE_PORT) || 3003;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 async function startServer(): Promise<void> {

@@ -5,8 +5,9 @@ difficulty, quiz retry functionality, and comprehensive analytics with leaderboa
 
 **🌐 LIVE DEPLOYMENT:** All services are now running on Azure Container Instances!
 
-if there is any change in Deployment, please refer this docs on https://jaiminpatel345.github.io/docs
-(Yes I don't put code on GitHub, this is only docs)
+- if there is any change in Deployment, please refer this docs on https://jaiminpatel345.github.io/docs (Yes I don't put code on GitHub, this is only docs)
+- If want to see postman docs, open docs/postman_guide.md file
+- Also checkout docs/index.md 
 
 # 🌐 Live Service URLs
 
@@ -91,7 +92,6 @@ curl http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/healt
 - **Registry:** Azure Container Registry (quizzerregistry1756067615.azurecr.io)
 - **Database:** MongoDB Atlas (Online)
 - **Cache:** Redis Cloud (Online)
-- **Status:** 🟢 All services running
 - **Cost:** ~$5-10/month (Azure for Students)
 
 ---
@@ -153,7 +153,7 @@ cd quizzer
 chmod +x infrastructure/scripts/*.sh
 
 # 3. Install dependencies for all services
-yarn install
+yarn install # can use npm also
 
 # 4. Set up environment variables
 cp .env.example .env
@@ -162,7 +162,7 @@ cp .env.example .env
 #5 start mongodb and redis server
 
 # 6. Start all services
-npm run dev:all
+yarn dev
 ```
 
 ### Service Health Check
@@ -297,20 +297,19 @@ All protected endpoints require Bearer token authentication. Start by registerin
 
 #### Key Endpoints
 
-| Method   | Endpoint                                      | Purpose                     | Auth Required |
-|----------|-----------------------------------------------|-----------------------------|---------------|
-| `GET`    | `/api/quiz`                                   | Get quizzes with filtering  | Optional      |
-| `GET`    | `/api/quiz/:quizId`                           | Get specific quiz           | Optional*     |
-| `POST`   | `/api/quiz`                                   | Create new quiz             | Yes           |
-| `POST`   | `/api/quiz/generate`                          | Generate AI quiz            | Yes           |
-| `POST`   | `/api/quiz/adaptive`                          | Create adaptive quiz        | Yes           |
-| `PUT`    | `/api/quiz/:quizId`                           | Update quiz metadata        | Yes           |
-| `DELETE` | `/api/quiz/:quizId`                           | Soft delete quiz            | Yes           |
-| `POST`   | `/api/quiz/:quizId/duplicate`                 | Duplicate existing quiz     | Yes           |
-| `POST`   | `/api/quiz/:quizId/submit`                    | Submit quiz (proxy)         | Yes           |
-| `GET`    | `/api/quiz/history`                           | Get quiz history            | Yes           |
-| `POST`   | `/api/quiz/:quizId/question/:questionId/hint` | Generate hint               | Yes           |
-| `POST`   | `/api/quiz/adjust-difficulty`                 | Real-time difficulty adjust | Yes           |
+| Method   | Endpoint                                      | Purpose                     |
+|----------|-----------------------------------------------|-----------------------------|
+| `GET`    | `/api/quiz`                                   | Get quizzes with filtering  |
+| `GET`    | `/api/quiz/:quizId`                           | Get specific quiz           |
+| `POST`   | `/api/quiz`                                   | Create new quiz             |
+| `POST`   | `/api/quiz/generate`                          | Generate AI quiz            |
+| `POST`   | `/api/quiz/adaptive`                          | Create adaptive quiz        |
+| `PUT`    | `/api/quiz/:quizId`                           | Update quiz metadata        |
+| `DELETE` | `/api/quiz/:quizId`                           | Soft delete quiz            |
+| `POST`   | `/api/quiz/:quizId/duplicate`                 | Duplicate existing quiz     |
+| `POST`   | `/api/quiz/:quizId/submit`                    | Submit quiz (proxy)         |
+| `GET`    | `/api/quiz/history`                           | Get quiz history            |
+| `POST`   | `/api/quiz/:quizId/question/:questionId/hint` | Generate hint               |
 
 **📁 For detailed payloads:** See `services/quiz-service/README.md`
 
@@ -425,13 +424,13 @@ All protected endpoints require Bearer token authentication. Start by registerin
 cd services/auth-service && yarn dev
 
 # Start all services concurrently
-yarn dev:all
+yarn dev
 
 # Build specific service
 cd services/quiz-service && yarn build
 
 # Build all services
-yarn build:all
+yarn build
 ```
 
 ### Production Deployment
@@ -449,15 +448,6 @@ docker-compose -f docker-compose.prod.yml up -d
 docker-compose logs -f
 ```
 
-#### Manual Deployment
-
-```bash
-# Build all services
-yarn build:all
-
-# Start with PM2
-pm2 start ecosystem.config.js
-```
 
 ### Environment Variables
 
@@ -511,21 +501,8 @@ Each service exposes health check endpoints at `/health` for monitoring and load
 
 ---
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open Pull Request
-
+## Social
+- See my Portfolio: https://portfolio.jaimin-detroja.tech you must like this :)
 ---
 
-## 📞 Support
-
-For questions, issues, or contributions, please refer to the individual service documentation or create an issue in the
-project repository.
+### Thank you 

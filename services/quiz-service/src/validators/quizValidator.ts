@@ -363,3 +363,102 @@ export const getQuizByIdSchema = {
     internal: Joi.boolean().default(false)
   })
 };
+
+export const adjustQuizDifficultySchema = {
+  body: Joi.object({
+    quizId: Joi.string()
+      .pattern(/^[0-9a-fA-F]{24}$/)
+      .required()
+      .messages({
+        'string.pattern.base': 'Quiz ID must be a valid MongoDB ObjectId',
+        'any.required': 'Quiz ID is required'
+      }),
+
+    currentAnswers: Joi.array()
+      .items(
+        Joi.object({
+          questionId: Joi.string()
+            .pattern(/^[0-9a-fA-F]{24}$/)
+            .required()
+            .messages({
+              'string.pattern.base': 'Question ID must be a valid MongoDB ObjectId',
+              'any.required': 'Question ID is required'
+            }),
+          
+          selectedAnswer: Joi.alternatives()
+            .try(
+              Joi.string().trim().min(1),
+              Joi.array().items(Joi.string().trim().min(1)),
+              Joi.number()
+            )
+            .required()
+            .messages({
+              'any.required': 'Selected answer is required'
+            }),
+          
+          isCorrect: Joi.boolean()
+            .required()
+            .messages({
+              'any.required': 'Answer correctness status is required'
+            }),
+          
+          timeSpent: Joi.number()
+            .positive()
+            .required()
+            .messages({
+              'number.positive': 'Time spent must be a positive number',
+              'any.required': 'Time spent is required'
+            }),
+          
+          difficulty: Joi.string()
+            .valid('easy', 'medium', 'hard')
+            .required()
+            .messages({
+              'any.only': 'Question difficulty must be easy, medium, or hard',
+              'any.required': 'Question difficulty is required'
+            })
+        })
+      )
+      .min(1)
+      .required()
+      .messages({
+        'array.min': 'At least one answer is required',
+        'any.required': 'Current answers are required'
+      }),
+
+    remainingQuestions: Joi.number()
+      .integer()
+      .min(0)
+      .required()
+      .messages({
+        'number.integer': 'Remaining questions must be an integer',
+        'number.min': 'Remaining questions cannot be negative',
+        'any.required': 'Remaining questions count is required'
+      }),
+
+    currentDifficulty: Joi.string()
+      .valid('easy', 'medium', 'hard', 'adaptive')
+      .required()
+      .messages({
+        'any.only': 'Current difficulty must be easy, medium, hard, or adaptive',
+        'any.required': 'Current difficulty is required'
+      }),
+
+    subject: Joi.string()
+      .trim()
+      .min(2)
+      .max(100)
+      .optional()
+      .messages({
+        'string.min': 'Subject must be at least 2 characters long',
+        'string.max': 'Subject cannot exceed 100 characters'
+      }),
+
+    timeRemaining: Joi.number()
+      .positive()
+      .optional()
+      .messages({
+        'number.positive': 'Time remaining must be a positive number'
+      })
+  })
+};
