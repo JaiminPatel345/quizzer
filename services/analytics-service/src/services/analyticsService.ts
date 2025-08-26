@@ -19,14 +19,22 @@ export class AnalyticsService {
       grade: number, submissionData: any,
   ): Promise<void> {
     try {
-      // Find or create performance history
+      // Normalize subject name to prevent case-sensitivity issues
+      const normalizedSubject = subject.trim().toLowerCase().replace(/\s+/g, ' ');
+      
+      // Find or create performance history using case-insensitive search
       let performance = await PerformanceHistory.findOne({
-        userId, subject, grade,
+        userId, 
+        subject: { $regex: new RegExp(`^${normalizedSubject.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }, 
+        grade,
       });
 
       if (!performance) {
         performance = new PerformanceHistory({
-          userId, subject, grade, stats: {
+          userId, 
+          subject: subject.trim(), // Keep original case for display
+          grade, 
+          stats: {
             totalQuizzes: 0,
             averageScore: 0,
             bestScore: 0,

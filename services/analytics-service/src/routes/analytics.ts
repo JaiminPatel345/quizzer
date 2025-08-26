@@ -4,7 +4,8 @@ import {
   getSubjectPerformance,
   getPerformanceTrends,
   getTopicAnalysis,
-  updateUserPerformance
+  updateUserPerformance,
+  cleanupDuplicateRecords
 } from '../controllers/analyticsController.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { validateRequest } from '../middleware/validation.js';
@@ -35,5 +36,8 @@ router.get('/topics', getTopicAnalysis);
 
 // Update user performance (internal API)
 router.post('/performance/update', validateRequest(updatePerformanceSchema), updateUserPerformance);
+
+// Database cleanup endpoint (admin/internal use)
+router.post('/cleanup', cleanupDuplicateRecords);
 
 export default router;
