@@ -82,11 +82,21 @@ jobs:
           --registry-username ${{ secrets.REGISTRY_USERNAME }} \
           --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
           --os-type Linux \
-          --ports 3001 \
-          --cpu 0.5 \
-          --memory 1 \
-          --environment-variables NODE_ENV=production PORT=3001 \
-          --restart-policy OnFailure
+          --ports 80 \
+          --ip-address public \
+          --cpu 1 \
+          --memory 1.5 \
+          --environment-variables \
+            NODE_ENV=production \
+            PORT=80 \
+            MONGODB_URI='${{ secrets.MONGODB_URI }}' \
+            REDIS_URL='${{ secrets.REDIS_URL }}' \
+            JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+            GROQ_API_KEY='${{ secrets.GROQ_API_KEY }}' \
+            GROQ_MODEL='${{ secrets.GROQ_MODEL }}' \
+            GEMINI_API_KEY='${{ secrets.GEMINI_API_KEY }}' \
+            GEMINI_MODEL='${{ secrets.GEMINI_MODEL }}' \
+          --restart-policy Always
           
     - name: Deploy Analytics Service to Azure Container Instances
       run: |
@@ -98,11 +108,17 @@ jobs:
           --registry-username ${{ secrets.REGISTRY_USERNAME }} \
           --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
           --os-type Linux \
-          --ports 3002 \
-          --cpu 0.5 \
-          --memory 1 \
-          --environment-variables NODE_ENV=production PORT=3002 \
-          --restart-policy OnFailure
+          --ports 80 \
+          --ip-address public \
+          --cpu 1 \
+          --memory 1.5 \
+          --environment-variables \
+            NODE_ENV=production \
+            PORT=80 \
+            MONGODB_URI='${{ secrets.MONGODB_URI }}' \
+            REDIS_URL='${{ secrets.REDIS_URL }}' \
+            JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+          --restart-policy Always
           
     - name: Deploy Auth Service to Azure Container Instances
       run: |
@@ -114,11 +130,19 @@ jobs:
           --registry-username ${{ secrets.REGISTRY_USERNAME }} \
           --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
           --os-type Linux \
-          --ports 3003 \
-          --cpu 0.5 \
-          --memory 1 \
-          --environment-variables NODE_ENV=production PORT=3003 \
-          --restart-policy OnFailure
+          --ports 80 \
+          --ip-address public \
+          --cpu 1 \
+          --memory 1.5 \
+          --environment-variables \
+            NODE_ENV=production \
+            PORT=80 \
+            MONGODB_URI='${{ secrets.MONGODB_URI }}' \
+            REDIS_URL='${{ secrets.REDIS_URL }}' \
+            JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+            EMAIL_USER='${{ secrets.EMAIL_USER }}' \
+            EMAIL_PASSWORD='${{ secrets.EMAIL_PASSWORD }}' \
+          --restart-policy Always
           
     - name: Deploy Quiz Service to Azure Container Instances
       run: |
@@ -130,11 +154,17 @@ jobs:
           --registry-username ${{ secrets.REGISTRY_USERNAME }} \
           --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
           --os-type Linux \
-          --ports 3004 \
-          --cpu 0.5 \
-          --memory 1 \
-          --environment-variables NODE_ENV=production PORT=3004 \
-          --restart-policy OnFailure
+          --ports 80 \
+          --ip-address public \
+          --cpu 1 \
+          --memory 1.5 \
+          --environment-variables \
+            NODE_ENV=production \
+            PORT=80 \
+            MONGODB_URI='${{ secrets.MONGODB_URI }}' \
+            REDIS_URL='${{ secrets.REDIS_URL }}' \
+            JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+          --restart-policy Always
           
     - name: Deploy Submission Service to Azure Container Instances
       run: |
@@ -146,8 +176,14 @@ jobs:
           --registry-username ${{ secrets.REGISTRY_USERNAME }} \
           --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
           --os-type Linux \
-          --ports 3005 \
-          --cpu 0.5 \
-          --memory 1 \
-          --environment-variables NODE_ENV=production PORT=3005 \
-          --restart-policy OnFailure
+          --ports 80 \
+          --ip-address public \
+          --cpu 1 \
+          --memory 1.5 \
+          --environment-variables \
+            NODE_ENV=production \
+            PORT=80 \
+            MONGODB_URI='${{ secrets.MONGODB_URI }}' \
+            REDIS_URL='${{ secrets.REDIS_URL }}' \
+            JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+          --restart-policy Always
