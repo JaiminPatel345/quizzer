@@ -30,9 +30,6 @@ jobs:
     - name: Install dependencies
       run: yarn install --frozen-lockfile
       
-    - name: Set production environment
-      run: echo "NODE_ENV=production" >> $GITHUB_ENV
-      
     - name: Build all services
       run: yarn build
       
