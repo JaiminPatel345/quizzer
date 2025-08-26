@@ -25,19 +25,19 @@ for service in "${SERVICES[@]}"; do
         # Get port from the service name mapping
         case $service in
             "ai-service")
-                port="3001"
+                port="80"
                 ;;
             "analytics-service")
-                port="3002"
+                port="80"
                 ;;
             "auth-service")
-                port="3003"
+                port="80"
                 ;;
             "quiz-service")
-                port="3004"
+                port="80"
                 ;;
             "submission-service")
-                port="3005"
+                port="80"
                 ;;
         esac
         

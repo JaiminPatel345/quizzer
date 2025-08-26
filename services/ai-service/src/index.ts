@@ -12,7 +12,7 @@ import { connectDatabase } from './config/database.js';
 import { logger } from './utils/logger.js';
 import mongoose from 'mongoose';
 
-const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.' : '127.0.0.1';
+const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1';
 const PORT = Number(process.env.PORT) || Number(process.env.AI_SERVICE_PORT) || process.env.NODE_ENV === 'production' ? 80 : 3003;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
