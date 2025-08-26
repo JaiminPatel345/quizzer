@@ -81,6 +81,7 @@ jobs:
           --registry-login-server ${{ env.CONTAINER_REGISTRY }}.azurecr.io \
           --registry-username ${{ secrets.REGISTRY_USERNAME }} \
           --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
+          --os-type Linux \
           --ports 3001 \
           --cpu 0.5 \
           --memory 1 \
@@ -96,6 +97,7 @@ jobs:
           --registry-login-server ${{ env.CONTAINER_REGISTRY }}.azurecr.io \
           --registry-username ${{ secrets.REGISTRY_USERNAME }} \
           --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
+          --os-type Linux \
           --ports 3002 \
           --cpu 0.5 \
           --memory 1 \
@@ -111,6 +113,7 @@ jobs:
           --registry-login-server ${{ env.CONTAINER_REGISTRY }}.azurecr.io \
           --registry-username ${{ secrets.REGISTRY_USERNAME }} \
           --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
+          --os-type Linux \
           --ports 3003 \
           --cpu 0.5 \
           --memory 1 \
@@ -126,6 +129,7 @@ jobs:
           --registry-login-server ${{ env.CONTAINER_REGISTRY }}.azurecr.io \
           --registry-username ${{ secrets.REGISTRY_USERNAME }} \
           --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
+          --os-type Linux \
           --ports 3004 \
           --cpu 0.5 \
           --memory 1 \
@@ -141,6 +145,7 @@ jobs:
           --registry-login-server ${{ env.CONTAINER_REGISTRY }}.azurecr.io \
           --registry-username ${{ secrets.REGISTRY_USERNAME }} \
           --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
+          --os-type Linux \
           --ports 3005 \
           --cpu 0.5 \
           --memory 1 \
