@@ -116,7 +116,7 @@ curl http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3002/health
     {
       "questionId": "string (required)",
       "questionText": "string (required, 10-1000 chars)",
-      "questionType": "string (required, mcq|true_false|short_answer)",
+      "questionType": "string (required, mcq|true_false)",
       "options": ["string array (required for mcq, 2-6 options, each max 200 chars)"],
       "correctAnswer": "string (required)",
       "explanation": "string (optional, max 500 chars)",
@@ -204,7 +204,7 @@ curl http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3002/health
   },
   "template": "string (optional, max 100 chars)",
   "isPublic": "boolean (optional, default: false)",
-  "questionTypes": ["string array (optional, mcq|true_false|short_answer)"],
+  "questionTypes": ["string array (optional, mcq|true_false)"],
   "topics": ["string array (optional, each max 100 chars)"]
 }
 ```
@@ -341,7 +341,7 @@ curl http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3002/health
   },
   "template": "string (optional, max 100 chars)",
   "isPublic": "boolean (optional, default: false)",
-  "questionTypes": ["string array (optional, mcq|true_false|short_answer)"],
+  "questionTypes": ["string array (optional, mcq|true_false)"],
   "topics": ["string array (optional, each max 100 chars)"]
 }
 ```

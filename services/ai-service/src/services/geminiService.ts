@@ -294,7 +294,7 @@ class GeminiService {
 
 STRICT REQUIREMENTS:
 - ${difficultyInstruction}
-- Question types MUST be EXACTLY: "mcq", "true_false", or "short_answer" (use these exact strings only)
+- Question types MUST be EXACTLY: "mcq" or "true_false" (use these exact strings only)
 - Create ORIGINAL questions - DO NOT use the example questions shown below
 - Cover diverse topics: ${topics}
 - Each question must test different concepts and knowledge areas
@@ -303,7 +303,6 @@ STRICT REQUIREMENTS:
 QUESTION TYPE RULES:
 - "mcq": Multiple choice with 4 options array
 - "true_false": Boolean question, correctAnswer must be "true" or "false"
-- "short_answer": Open-ended, no options array needed
 
 CRITICAL: Return ONLY a JSON array starting with [ and ending with ]. No markdown, no explanations, no wrapper objects.
 
@@ -328,16 +327,6 @@ FORMAT REFERENCE (DO NOT COPY THESE QUESTIONS - THEY ARE JUST FORMAT EXAMPLES):
     "explanation": "Explanation here",
     "difficulty": "medium",
     "points": 1,
-    "topic": "Topic Name"
-  },
-  {
-    "questionId": "q3",
-    "questionText": "Example short answer question here",
-    "questionType": "short_answer", 
-    "correctAnswer": "Expected answer here",
-    "explanation": "Explanation here",
-    "difficulty": "hard",
-    "points": 2,
     "topic": "Topic Name"
   }
 ]

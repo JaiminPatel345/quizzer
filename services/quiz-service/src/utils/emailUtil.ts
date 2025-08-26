@@ -1,15 +1,6 @@
 import nodemailer from 'nodemailer';
 import { logger } from './logger.js';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD
-  }
-});
 
 interface AnalyticsEmailData {
   username: string;
@@ -23,6 +14,19 @@ interface AnalyticsEmailData {
 
 export const sendAnalyticsEmail = async (userEmail: string, data: AnalyticsEmailData): Promise<void> => {
   try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      port: parseInt(process.env.SMTP_PORT || '587'),
+      secure: false,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+      }
+    });
+
+    console.log('EMAIL_USER:', process.env.EMAIL_USER ? 'Set' : 'Missing');
+    console.log('EMAIL_PASSWORD:', process.env.EMAIL_PASSWORD ? 'Set' : 'Missing');
+
     const htmlContent = `
       <h2>Quiz Analytics Report</h2>
       <p>Hello ${data.username},</p>
@@ -49,7 +53,7 @@ export const sendAnalyticsEmail = async (userEmail: string, data: AnalyticsEmail
     `;
 
     await transporter.sendMail({
-      from: process.env.SMTP_FROM || 'noreply@quizapp.com',
+      from: process.env.SMTP_FROM || 'noreply@jaimin_quizzer.com',
       to: userEmail,
       subject: `Quiz Analytics Report - ${data.quizTitle}`,
       html: htmlContent

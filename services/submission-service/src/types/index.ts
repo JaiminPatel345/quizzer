@@ -56,7 +56,7 @@ export interface SubmissionMetadata {
 export interface QuizQuestion {
   questionId: string;
   questionText: string;
-  questionType: 'mcq' | 'true_false' | 'short_answer';
+  questionType: 'mcq' | 'true_false';
   options: string[];
   correctAnswer: string;
   explanation: string;

@@ -145,7 +145,7 @@ curl http://quizzer-ai-1756068070.southindia.azurecontainer.io:3003/health
 ```json
 {
   "questionText": "string (required, 10-1000 chars)",
-  "questionType": "string (required, mcq|true_false|short_answer)",
+  "questionType": "string (required, mcq|true_false)",
   "correctAnswer": "string (required)",
   "userAnswer": "string (optional)",
   "hintLevel": "number (optional, 1-3, default: 1)",
@@ -176,7 +176,7 @@ curl http://quizzer-ai-1756068070.southindia.azurecontainer.io:3003/health
     {
       "questionId": "string (required)",
       "questionText": "string (required)",
-      "questionType": "string (required, mcq|true_false|short_answer)",
+      "questionType": "string (required, mcq|true_false)",
       "userAnswer": "string (required)",
       "correctAnswer": "string (required)",
       "isCorrect": "boolean (required)",
@@ -439,7 +439,7 @@ All endpoints return consistent error format:
   "question": {
     "questionId": "string (required)",
     "questionText": "string (required, 10-1000 chars)",
-    "questionType": "string (required, mcq|true_false|short_answer)",
+    "questionType": "string (required, mcq|true_false)",
     "difficulty": "string (required, easy|medium|hard)",
     "topic": "string (required, 2-100 chars)",
     "options": ["string array (optional for mcq)"],
@@ -465,7 +465,7 @@ All endpoints return consistent error format:
     {
       "questionId": "string (required)",
       "questionText": "string (required)",
-      "questionType": "string (required, mcq|true_false|short_answer)",
+      "questionType": "string (required, mcq|true_false)",
       "difficulty": "string (required, easy|medium|hard)",
       "topic": "string (required)",
       "correctAnswer": "string (required)",

@@ -118,10 +118,10 @@ export const createQuizSchema = {
           }),
 
           questionType: Joi.string()
-          .valid('mcq', 'true_false', 'short_answer')
+          .valid('mcq', 'true_false')
           .required()
           .messages({
-            'any.only': 'Question type must be mcq, true_false, or short_answer',
+            'any.only': 'Question type must be mcq or true_false',
             'any.required': 'Question type is required'
           }),
 

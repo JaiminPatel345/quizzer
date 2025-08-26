@@ -54,10 +54,6 @@ export class ScoringService {
       case 'true_false':
         return correctAnswer === userAnswerNormalized;
 
-      case 'short_answer':
-        // For short answers, allow some flexibility
-        return this.fuzzyMatch(correctAnswer, userAnswerNormalized);
-
       default:
         return false;
     }

@@ -58,7 +58,7 @@ const QuizQuestionSchema = new Schema<QuizQuestion>({
   questionText: { type: String, required: true, trim: true },
   questionType: {
     type: String,
-    enum: ['mcq', 'true_false', 'short_answer'],
+    enum: ['mcq', 'true_false'],
     required: true
   },
   options: [{ type: String, trim: true }],

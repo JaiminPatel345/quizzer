@@ -7,7 +7,7 @@ export const evaluateSubmissionSchema = {
         Joi.object({
           questionId: Joi.string().required(),
           questionText: Joi.string().required(),
-          questionType: Joi.string().valid('mcq', 'true_false', 'short_answer').required(),
+          questionType: Joi.string().valid('mcq', 'true_false').required(),
           difficulty: Joi.string().valid('easy', 'medium', 'hard', 'mixed', 'adaptive').required(),
           topic: Joi.string().required(),
           correctAnswer: Joi.string().required(),

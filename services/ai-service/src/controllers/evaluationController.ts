@@ -159,7 +159,7 @@ Provide exactly 2 actionable improvement suggestions in JSON format:
       // Use the text generation method with custom prompt
       const result = await groqService.generateHint({
         questionText: prompt,
-        questionType: 'short_answer',
+        questionType: 'mcq',
         difficulty: 'medium',
         topic: 'performance analysis'
       } as any);
@@ -176,7 +176,7 @@ Provide exactly 2 actionable improvement suggestions in JSON format:
         const geminiService = getGeminiService();
         const result = await geminiService.generateHint({
           questionText: prompt,
-          questionType: 'short_answer',
+          questionType: 'mcq',
           difficulty: 'medium',
           topic: 'performance analysis'
         } as any);
