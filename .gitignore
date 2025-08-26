@@ -1,7 +1,7 @@
 #Dear sir this is not copy from github. I using git just for version control.
 
 .env
-.env.production
+# .env.production - Allow this file for production builds
 
 node_modules
 .idea
