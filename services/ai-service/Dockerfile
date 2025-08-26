@@ -1,49 +1,50 @@
-# AI Service Dockerfile - Yarn workspaces, multi-stage build
-FROM node:20-alpine AS builder
+# Use Node.js 18 Alpine as base image
+FROM node:18-alpine AS builder
 
-WORKDIR /workspace
-
-# Root manifests
-COPY package.json yarn.lock ./
-
-# Workspace manifests for caching
-COPY services/auth-service/package.json services/auth-service/tsconfig.json ./services/auth-service/
-COPY services/quiz-service/package.json services/quiz-service/tsconfig.json ./services/quiz-service/
-COPY services/ai-service/package.json services/ai-service/tsconfig.json ./services/ai-service/
-COPY services/submission-service/package.json services/submission-service/tsconfig.json ./services/submission-service/
-COPY services/analytics-service/package.json services/analytics-service/tsconfig.json ./services/analytics-service/
-
-# Install deps using yarn workspaces
-RUN corepack enable \
-  && corepack prepare yarn@1.22.22 --activate \
-  && yarn --version \
-  && yarn install --frozen-lockfile
-
-# Copy source for this service and build
-COPY services/ai-service/src ./services/ai-service/src
-RUN yarn workspace ai-service build
-
-# Production stage
-FROM node:20-alpine AS production
-
+# Set working directory
 WORKDIR /app
 
-# Copy runtime manifest and lockfile
-COPY services/ai-service/package.json ./package.json
-COPY yarn.lock ./yarn.lock
+# Copy package files
+COPY package.json yarn.lock* ./
 
-RUN corepack enable \
-  && corepack prepare yarn@1.22.22 --activate \
-  && (yarn install --production --frozen-lockfile || yarn install --production) \
-  && yarn cache clean
+# Install dependencies
+RUN yarn install --frozen-lockfile
 
-COPY --from=builder /workspace/services/ai-service/dist ./dist
+# Copy source code
+COPY . .
 
-# Expose the port
-EXPOSE 3002
+# Build the application
+RUN yarn build
 
-# Set environment variables
-ENV NODE_ENV=production
-ENV PORT=3002
+# Production stage
+FROM node:18-alpine AS production
 
-CMD ["yarn", "start"]
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package.json yarn.lock* ./
+
+# Install only production dependencies
+RUN yarn install --frozen-lockfile --production && yarn cache clean
+
+# Copy built application from builder stage
+COPY --from=builder /app/dist ./dist
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nodejs -u 1001
+
+# Change ownership of the app directory
+RUN chown -R nodejs:nodejs /app
+USER nodejs
+
+# Expose port
+EXPOSE 3001
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3001/health || exit 1
+
+# Start the application
+CMD ["node", "dist/index.js"]
