@@ -26,6 +26,7 @@ This guide will help you deploy your Express.js microservices to Azure using Doc
 - Azure CLI installed and logged in
 - GitHub repository access
 - Docker installed (for local testing)
+- Node.js 20+ (required by some dependencies like joi@18.0.1)
 
 ## Step-by-Step Deployment Process
 
