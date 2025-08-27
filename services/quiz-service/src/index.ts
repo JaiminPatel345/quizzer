@@ -25,7 +25,7 @@ async function startServer(): Promise<void> {
 
     // Initialize app
     const quizApp = new QuizServiceApp();
-    const app = quizApp.app;
+    const app = quizApp.getExpressApp();
 
 
     // Start server

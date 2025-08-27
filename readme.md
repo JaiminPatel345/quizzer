@@ -474,12 +474,19 @@ BCRYPT_ROUNDS=12
 GROQ_API_KEY=your-groq-api-key
 GEMINI_API_KEY=your-gemini-api-key
 
-# Service URLs
-AUTH_SERVICE_URL=http://localhost:3001
-QUIZ_SERVICE_URL=http://localhost:3002
-AI_SERVICE_URL=http://localhost:3003
-SUBMISSION_SERVICE_URL=http://localhost:3004
-ANALYTICS_SERVICE_URL=http://localhost:3005
+# Service URLs (Production - Azure)
+AUTH_SERVICE_URL=http://quizzer-auth-service.eastus.azurecontainer.io
+QUIZ_SERVICE_URL=http://quizzer-quiz-service.eastus.azurecontainer.io
+AI_SERVICE_URL=http://quizzer-ai-service.eastus.azurecontainer.io
+SUBMISSION_SERVICE_URL=http://quizzer-submission-service.eastus.azurecontainer.io
+ANALYTICS_SERVICE_URL=http://quizzer-analytics-service.eastus.azurecontainer.io
+
+# Service URLs (Development - Local)
+# AUTH_SERVICE_URL=http://localhost:3001
+# QUIZ_SERVICE_URL=http://localhost:3002
+# AI_SERVICE_URL=http://localhost:3003
+# SUBMISSION_SERVICE_URL=http://localhost:3004
+# ANALYTICS_SERVICE_URL=http://localhost:3005
 ```
 
 ### Service Dependencies

@@ -25,7 +25,7 @@ async function startServer(): Promise<void> {
 
     // Initialize app
     const aiApp = new AIServiceApp();
-    const app = aiApp.app;
+    const app = aiApp.getExpressApp();
 
     // Start server
     const server = app.listen(PORT, HOST, () => {

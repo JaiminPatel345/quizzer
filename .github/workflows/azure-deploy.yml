@@ -42,6 +42,14 @@ jobs:
       run: |
         az acr login --name ${{ env.CONTAINER_REGISTRY }}
         
+    - name: Clean up existing containers (ignore failures)
+      run: |
+        az container delete --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --name ai-service --yes || true
+        az container delete --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --name analytics-service --yes || true
+        az container delete --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --name auth-service --yes || true
+        az container delete --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --name quiz-service --yes || true
+        az container delete --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --name submission-service --yes || true
+        
     - name: Build and push AI Service image
       run: |
         docker build -t ${{ env.CONTAINER_REGISTRY }}.azurecr.io/ai-service:${{ env.IMAGE_TAG }} \
@@ -97,6 +105,8 @@ jobs:
             GROQ_MODEL='${{ secrets.GROQ_MODEL }}' \
             GEMINI_API_KEY='${{ secrets.GEMINI_API_KEY }}' \
             GEMINI_MODEL='${{ secrets.GEMINI_MODEL }}' \
+            AUTH_SERVICE_URL='http://quizzer-auth-service.eastus.azurecontainer.io' \
+            QUIZ_SERVICE_URL='http://quizzer-quiz-service.eastus.azurecontainer.io' \
           --restart-policy Always
           
     - name: Deploy Analytics Service to Azure Container Instances
@@ -120,6 +130,8 @@ jobs:
             MONGODB_URI='${{ secrets.MONGODB_URI }}' \
             REDIS_URL='${{ secrets.REDIS_URL }}' \
             JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+            AUTH_SERVICE_URL='http://quizzer-auth-service.eastus.azurecontainer.io' \
+            SUBMISSION_SERVICE_URL='http://quizzer-submission-service.eastus.azurecontainer.io' \
           --restart-policy Always
           
     - name: Deploy Auth Service to Azure Container Instances
@@ -168,6 +180,10 @@ jobs:
             MONGODB_URI='${{ secrets.MONGODB_URI }}' \
             REDIS_URL='${{ secrets.REDIS_URL }}' \
             JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+            AUTH_SERVICE_URL='http://quizzer-auth-service.eastus.azurecontainer.io' \
+            AI_SERVICE_URL='http://quizzer-ai-service.eastus.azurecontainer.io' \
+            ANALYTICS_SERVICE_URL='http://quizzer-analytics-service.eastus.azurecontainer.io' \
+            SUBMISSION_SERVICE_URL='http://quizzer-submission-service.eastus.azurecontainer.io' \
           --restart-policy Always
           
     - name: Deploy Submission Service to Azure Container Instances
@@ -191,4 +207,7 @@ jobs:
             MONGODB_URI='${{ secrets.MONGODB_URI }}' \
             REDIS_URL='${{ secrets.REDIS_URL }}' \
             JWT_SECRET='${{ secrets.JWT_SECRET }}' \
+            AUTH_SERVICE_URL='http://quizzer-auth-service.eastus.azurecontainer.io' \
+            QUIZ_SERVICE_URL='http://quizzer-quiz-service.eastus.azurecontainer.io' \
+            AI_SERVICE_URL='http://quizzer-ai-service.eastus.azurecontainer.io' \
           --restart-policy Always

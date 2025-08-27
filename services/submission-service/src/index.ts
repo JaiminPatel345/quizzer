@@ -25,7 +25,7 @@ async function startServer(): Promise<void> {
 
     // Initialize app
     const submissionApp = new SubmissionServiceApp();
-    const app = submissionApp.app;
+    const app = submissionApp.getExpressApp();
 
     // Start server
     const server = app.listen(PORT, HOST, () => {

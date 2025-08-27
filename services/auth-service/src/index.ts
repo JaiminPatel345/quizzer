@@ -23,7 +23,7 @@ async function startServer(): Promise<void> {
 
     // Initialize app
     const authApp = new AuthServiceApp();
-    const app = authApp.app;
+    const app = authApp.getExpressApp();
 
     // Start server
     const server = app.listen(PORT, HOST, () => {

@@ -25,7 +25,7 @@ async function startServer(): Promise<void> {
 
     // Initialize app
     const analyticsApp = new AnalyticsServiceApp();
-    const app = analyticsApp.app;
+    const app = analyticsApp.getExpressApp();
 
     // Start server
     const server = app.listen(PORT, HOST, () => {
