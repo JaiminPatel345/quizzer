@@ -14,7 +14,7 @@ import mongoose from 'mongoose';
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const HOST = NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1';
-const PORT = process.env.PORT || NODE_ENV === 'production' ? 80 : 3004;
+const PORT = parseInt(process.env.PORT || (NODE_ENV === 'production' ? '80' : '3004'), 10);
 
 async function startServer(): Promise<void> {
   try {
@@ -25,7 +25,7 @@ async function startServer(): Promise<void> {
 
     // Initialize app
     const submissionApp = new SubmissionServiceApp();
-    const app = submissionApp.getExpressApp();
+    const app = submissionApp.app;
 
     // Start server
     const server = app.listen(PORT, HOST, () => {
