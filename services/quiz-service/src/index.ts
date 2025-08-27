@@ -13,8 +13,8 @@ import { logger } from './utils/logger.js';
 import mongoose from 'mongoose';
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
-const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1';
-const PORT = Number(process.env.PORT) || Number(process.env.QUIZ_SERVICE_PORT) || process.env.NODE_ENV === 'production' ? 80 : 3002;
+const HOST = NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1';
+const PORT = process.env.PORT || NODE_ENV === 'production' ? 80 : 3002;
 
 async function startServer(): Promise<void> {
   try {
