@@ -14,14 +14,13 @@ import { logger } from './utils/logger.js';
 
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1';
-const PORT = Number(process.env.PORT) || Number(process.env.AUTH_SERVICE_PORT) || process.env.NODE_ENV === 'production' ? 80 : 3001;
+const PORT = Number(process.env.PORT) || 
+             (process.env.NODE_ENV === 'production' ? 80 : 3003);
 
 async function startServer(): Promise<void> {
   try {
     console.log('🚀 Starting Auth Service...');
 
-    // Connect to database
-    await connectDatabase();
 
     // Initialize app
     const authApp = new AuthServiceApp();
@@ -32,6 +31,9 @@ async function startServer(): Promise<void> {
       console.log(`✅ Auth Service running on http://${HOST}:${PORT} in ${NODE_ENV} mode`);
       logger.info(`Auth Service running on http://${HOST}:${PORT} in ${NODE_ENV} mode`);
     });
+
+    // Connect to database
+    await connectDatabase();
 
     // Graceful shutdown
     const gracefulShutdown = (signal: string) => {
