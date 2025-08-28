@@ -1,19 +1,14 @@
-# Use Node.js 20 Alpine as base image
 FROM node:20-alpine AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Copy package files
 COPY package.json yarn.lock* ./
 
-# Install dependencies
 RUN yarn install --frozen-lockfile
 
 # Copy source code
 COPY . .
 
-# Build the application
 RUN yarn build
 
 # Production stage
@@ -45,7 +40,6 @@ USER nodejs
 
 # Expose port
 EXPOSE 80
-
 
 # Start the application
 CMD ["node", "dist/index.js"]
