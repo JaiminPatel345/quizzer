@@ -154,7 +154,7 @@ show_logs() {
         return 1
     fi
     
-    az container logs --resource-group $RESOURCE_GROUP --name $service --tail 50
+    az container logs --resource-group $RESOURCE_GROUP --name $service
 }
 
 # Main script logic
