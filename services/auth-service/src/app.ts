@@ -82,7 +82,7 @@ class AuthServiceApp {
         message: 'Auth Service API',
         version: '1.0.0',
         endpoints: {
-          health: '/health', auth: '/api/auth',
+          health: '/health', auth: '/api/auth', user: '/api/user',
         },
       });
     });
