@@ -12,10 +12,6 @@
     "logs": "docker-compose logs -f",
     "install-all": "yarn install --workspaces"
   },
-  "workspaces": [
-    "services/*",
-    "gateway/*"
-  ],
   "devDependencies": {
     "@types/node": "^24.3.0",
     "concurrently": "^8.2.2",

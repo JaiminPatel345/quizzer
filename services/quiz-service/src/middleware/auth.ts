@@ -2,7 +2,7 @@ import type { Response, NextFunction } from 'express';
 import {
   getAuthServiceClient,
 } from '../config/serviceClient.js';
-import { handleError, UnauthorizedError } from '../utils/errorHandler.js';
+import { handleError, UnauthorizedError, ServiceUnavailableError } from '../utils/errorHandler.js';
 import type {AuthRequest} from '../types/index.js';
 import {logger} from '../utils/logger.js';
 
@@ -48,11 +48,39 @@ export const authenticateToken = async (
 
       next();
     } catch (serviceError: any) {
-      if (serviceError.response?.status === 401) {
+      // Handle connection errors (service unavailable)
+      if (serviceError?.code === 'ECONNREFUSED' ||
+          serviceError?.code === 'ETIMEDOUT' ||
+          serviceError?.code === 'ENOTFOUND' ||
+          serviceError?.cause?.code === 'ECONNREFUSED') {
+        logger.error('Auth service connection failed:', {
+          code: serviceError.code,
+          message: serviceError.message,
+          url: serviceError.config?.url
+        });
+        throw new ServiceUnavailableError('Authentication service');
+      }
+
+      // Handle HTTP response errors
+      if (serviceError?.response?.status === 401) {
         throw new UnauthorizedError('Invalid or expired token');
       }
-      logger.error(serviceError.response.status, serviceError.response.statusText);
-      throw new Error('Authentication service unavailable');
+
+      if (serviceError?.response?.status) {
+        logger.error('Auth service error:', {
+          status: serviceError.response.status,
+          statusText: serviceError.response.statusText,
+          url: serviceError.config?.url
+        });
+        throw new ServiceUnavailableError('Authentication service');
+      }
+
+      // Log unexpected errors
+      logger.error('Unexpected auth service error:', {
+        message: serviceError.message,
+        stack: serviceError.stack
+      });
+      throw new ServiceUnavailableError('Authentication service');
     }
 
   } catch (error) {

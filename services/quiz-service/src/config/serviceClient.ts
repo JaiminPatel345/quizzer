@@ -62,23 +62,60 @@ class ServiceClient {
   }
 
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.get(url, config);
-    return response.data;
+    return this.executeWithRetry(() => this.client.get(url, config));
   }
 
   async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.post(url, data, config);
-    return response.data;
+    return this.executeWithRetry(() => this.client.post(url, data, config));
   }
 
   async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.put(url, data, config);
-    return response.data;
+    return this.executeWithRetry(() => this.client.put(url, data, config));
   }
 
   async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const response = await this.client.delete(url, config);
-    return response.data;
+    return this.executeWithRetry(() => this.client.delete(url, config));
+  }
+
+  private async executeWithRetry<T>(operation: () => Promise<any>): Promise<T> {
+    let lastError: any;
+
+    for (let attempt = 1; attempt <= this.retries; attempt++) {
+      try {
+        const response = await operation();
+        return response.data;
+      } catch (error: any) {
+        lastError = error;
+
+        // Don't retry on 4xx errors (client errors)
+        if (error.response?.status >= 400 && error.response?.status < 500) {
+          throw error;
+        }
+
+        // Retry on connection errors and 5xx errors
+        const shouldRetry = (
+          error.code === 'ECONNREFUSED' ||
+          error.code === 'ETIMEDOUT' ||
+          error.code === 'ENOTFOUND' ||
+          error.cause?.code === 'ECONNREFUSED' ||
+          (error.response?.status >= 500)
+        );
+
+        if (!shouldRetry || attempt === this.retries) {
+          throw error;
+        }
+
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        logger.warn(`Service request failed, retrying in ${delay}ms (attempt ${attempt}/${this.retries})`, {
+          error: error.message,
+          url: error.config?.url
+        });
+
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+
+    throw lastError;
   }
 }
 

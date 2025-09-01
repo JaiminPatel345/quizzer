@@ -48,6 +48,18 @@ export const handleError = (res: Response, functionName: string, error: AppError
     statusCode = 401;
     message = error.message;
   }
+  else if (error instanceof ServiceUnavailableError) {
+    statusCode = 503;
+    message = error.message;
+  }
+  // Handle connection errors (ECONNREFUSED, ETIMEDOUT, etc.)
+  else if ((error as any).code === 'ECONNREFUSED' ||
+           (error as any).code === 'ETIMEDOUT' ||
+           (error as any).code === 'ENOTFOUND' ||
+           (error as any).cause?.code === 'ECONNREFUSED') {
+    statusCode = 503;
+    message = 'External service is currently unavailable';
+  }
   // Handle axios errors from service calls
   else if ((error as any).response) {
     const axiosError = error as any;
@@ -116,5 +128,11 @@ export class BadRequestError extends CustomError {
 export class UnauthorizedError extends CustomError {
   constructor(message: string = 'Unauthorized access') {
     super(message, 401);
+  }
+}
+
+export class ServiceUnavailableError extends CustomError {
+  constructor(service: string = 'External service') {
+    super(`${service} is currently unavailable`, 503);
   }
 }
