@@ -91,13 +91,12 @@ jobs:
           --registry-username ${{ secrets.REGISTRY_USERNAME }} \
           --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
           --os-type Linux \
-          --ports 80 \
+          --ports 80 3003\
           --ip-address public \
           --cpu 0.5 \
           --memory 1.0 \
           --environment-variables \
             NODE_ENV=production \
-            PORT=80 \
             MONGODB_URI='${{ secrets.MONGODB_URI }}' \
             REDIS_URL='${{ secrets.REDIS_URL }}' \
             JWT_SECRET='${{ secrets.JWT_SECRET }}' \
@@ -120,13 +119,12 @@ jobs:
           --registry-username ${{ secrets.REGISTRY_USERNAME }} \
           --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
           --os-type Linux \
-          --ports 80 \
+          --ports 80 3005\
           --ip-address public \
           --cpu 0.5 \
           --memory 1.0 \
           --environment-variables \
             NODE_ENV=production \
-            PORT=80 \
             MONGODB_URI='${{ secrets.MONGODB_URI }}' \
             REDIS_URL='${{ secrets.REDIS_URL }}' \
             JWT_SECRET='${{ secrets.JWT_SECRET }}' \
@@ -145,13 +143,12 @@ jobs:
           --registry-username ${{ secrets.REGISTRY_USERNAME }} \
           --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
           --os-type Linux \
-          --ports 80 \
+          --ports 80 3001\
           --ip-address public \
           --cpu 0.5 \
           --memory 1.0 \
           --environment-variables \
             NODE_ENV=production \
-            PORT=80 \
             MONGODB_URI='${{ secrets.MONGODB_URI }}' \
             REDIS_URL='${{ secrets.REDIS_URL }}' \
             JWT_SECRET='${{ secrets.JWT_SECRET }}' \
@@ -170,13 +167,12 @@ jobs:
           --registry-username ${{ secrets.REGISTRY_USERNAME }} \
           --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
           --os-type Linux \
-          --ports 80 \
+          --ports 80 3002\
           --ip-address public \
           --cpu 0.5 \
           --memory 1.0 \
           --environment-variables \
             NODE_ENV=production \
-            PORT=80 \
             MONGODB_URI='${{ secrets.MONGODB_URI }}' \
             REDIS_URL='${{ secrets.REDIS_URL }}' \
             JWT_SECRET='${{ secrets.JWT_SECRET }}' \
@@ -197,13 +193,12 @@ jobs:
           --registry-username ${{ secrets.REGISTRY_USERNAME }} \
           --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
           --os-type Linux \
-          --ports 80 \
+          --ports 80 3004\
           --ip-address public \
           --cpu 0.5 \
           --memory 1.0 \
           --environment-variables \
             NODE_ENV=production \
-            PORT=80 \
             MONGODB_URI='${{ secrets.MONGODB_URI }}' \
             REDIS_URL='${{ secrets.REDIS_URL }}' \
             JWT_SECRET='${{ secrets.JWT_SECRET }}' \
