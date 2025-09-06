@@ -1,41 +1,22 @@
-# AI Quizzer - Live on Azure! 🚀
+# Quizzer - AI powerd quiz app backend ( Microservice ) 
 
-A scalable microservices-based quiz platform with AI-powered question generation, intelligent scoring, adaptive
-difficulty, quiz retry functionality, and comprehensive analytics with leaderboards.
-
-**🌐 LIVE DEPLOYMENT:** All services are now running on Azure Container Instances!
-
-- if there is any change in Deployment, please refer this docs on https://jaiminpatel345.github.io/docs (Yes I don't put code on GitHub, this is only docs)
-- If want to see postman docs, open docs/postman_guide.md file
-- Also checkout docs/index.md 
-
-# 🌐 Live Service URLs
-
-| Service                   | Live URL                                                           | localhost Port | Health Check                                                                             |
-|---------------------------|--------------------------------------------------------------------|--------------  |------------------------------------------------------------------------------------------|
-| 🔐 **Auth Service**       | http://quizzer-auth-1756088522.southindia.azurecontainer.io       | 3001           | [Health](http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001/health)       |
-| 🤖 **AI Service**         | http://quizzer-ai-1756068070.southindia.azurecontainer.io         | 3003           | [Health](http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002/health)         |
-| 📝 **Quiz Service**       | http://quizzer-quiz-1756068070.southindia.azurecontainer.io       | 3002           | [Health](http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003/health)       |
-| 📋 **Submission Service** | http://quizzer-submission-1756068070.southindia.azurecontainer.io | 3004           | [Health](http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/health) |
-| 📊 **Analytics Service**  | http://quizzer-analytics-1756068070.southindia.azurecontainer.io  | 3005           | [Health](http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/health)  |
+A scalable microservices-based quiz platform with AI-powered question generation, intelligent scoring, adaptive difficulty, quiz retry functionality, and comprehensive analytics with leaderboards.
 
 ## 📋 Table of Contents
 
-1. [Architecture Overview](#architecture-overview)
-2. [Services Overview](#services-overview)
-3. [Key Features](#key-features)
-4. [Quick Start Guide](#quick-start-guide)
-5. [API Flows & Testing](#api-flows--testing)
-6. [Service Documentation](#service-documentation)
-7. [Technology Stack](#technology-stack)
-8. [Development & Deployment](#development--deployment)
+1. [Key Features](#key-features)
+2. [Quick Start Guide](#quick-start-guide)
+3. [API Flows & Testing](#api-flows--testing)
+4. [Service Documentation](#service-documentation)
+5. [Technology Stack](#technology-stack)
+6. [Development & Deployment](#development--deployment)
 
 ---
 
 ## 🏗️ Architecture Overview
 
 ```
-┌─────────────────┐    ┌───────��────────┐    ┌───────────��──────┐
+┌─────────────────┐    ┌─────────────────┐    ┌───────────────────┐
 │   Auth Service  │    │   Quiz Service  │    │   AI Service      │
 │                 │    │                 │    │                   │ 
 │ • Authentication│    │ • Quiz CRUD     │    │ • Question Gen    │
@@ -55,46 +36,6 @@ difficulty, quiz retry functionality, and comprehensive analytics with leaderboa
 └──────────────────┘    └─────────────────┘    
 ```
 
-## 📊 Services Overview
-
-| Service                | Live URL                                                                       | Database      | Purpose                                     | Status |
-|------------------------|--------------------------------------------------------------------------------|---------------|---------------------------------------------|--------|
-| **Auth Service**       | [Live](http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001)       | MongoDB Atlas | User authentication & profile management    | ✅ Live |
-| **Quiz Service**       | [Live](http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003)       | MongoDB Atlas | Quiz content management & CRUD operations   | ✅ Live |
-| **AI Service**         | [Live](http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002)         | MongoDB Atlas | AI-powered question generation & evaluation | ✅ Live |
-| **Submission Service** | [Live](http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004) | MongoDB Atlas | Quiz submission & scoring system            | ✅ Live |
-| **Analytics Service**  | [Live](http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005)  | MongoDB Atlas | Performance analytics & leaderboards        | ✅ Live |
-
-## 🧪 Quick Test Commands
-
-Test all services with these commands:
-
-```bash
-# Test Auth Service
-curl http://quizzer-auth-1756068070.southindia.azurecontainer.io:3001/health
-
-# Test AI Service  
-curl http://quizzer-ai-1756068070.southindia.azurecontainer.io:3002/health
-
-# Test Quiz Service
-curl http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3003/health
-
-# Test Submission Service
-curl http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/health
-
-# Test Analytics Service
-curl http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/health
-```
-
-## 🚀 Deployment Status
-
-- **Platform:** Azure Container Instances
-- **Registry:** Azure Container Registry (quizzerregistry1756067615.azurecr.io)
-- **Database:** MongoDB Atlas (Online)
-- **Cache:** Redis Cloud (Online)
-- **Cost:** ~$5-10/month (Azure for Students)
-
----
 
 ## 🌟 Key Features
 
@@ -149,8 +90,6 @@ GEMINI_API_KEY=your-gemini-api-key
 # 1. Unzip repository ; which you already did :)
 cd quizzer
 
-# 2. Make scripts executable
-chmod +x infrastructure/scripts/*.sh
 
 # 3. Install dependencies for all services
 yarn install # can use npm also
