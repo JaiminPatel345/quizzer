@@ -1,8 +1,8 @@
 # Submission Service API Documentation - Live on Azure! 🚀
 
 ## 🌐 Live Service URL
-**Base URL**: http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004
-**Health Check**: http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/health
+**Base URL**: http://localhost:3004
+**Health Check**: http://localhost:3004/health
 
 **Port**: 3004  
 **Authentication**: Bearer token required for all endpoints  
@@ -11,7 +11,7 @@
 ## 🧪 Quick Test
 ```bash
 # Test the live service
-curl http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/health
+curl http://localhost:3004/health
 ```
 
 ---
@@ -30,18 +30,12 @@ curl http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/heal
 ### Service Info
 **GET** `/`  
 **Authentication**: None  
-**Response**:
-```json
-
-```
+ 
 
 ### Health Check
 **GET** `/health`  
 **Authentication**: None  
-**Response**:
-```json
-
-```
+ 
 
 ---
 
@@ -69,10 +63,7 @@ curl http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/heal
 }
 ```
 
-**Response**:
-```json
-
-```
+ 
 
 ---
 
@@ -96,10 +87,7 @@ curl http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/heal
 - `sortBy`: string (submittedAt|score|timeSpent, default: submittedAt)
 - `sortOrder`: string (asc|desc, default: desc)
 
-**Response**:
-```json
-
-```
+ 
 
 ### Get Specific Submission
 **GET** `/api/submission/:submissionId`  
@@ -108,10 +96,7 @@ curl http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/heal
 **Parameters**:
 - `submissionId`: string (MongoDB ObjectId, required)
 
-**Response**:
-```json
-
-```
+ 
 
 ### Get Submission Details with Explanations
 **GET** `/api/submission/:submissionId/details`  
@@ -120,10 +105,7 @@ curl http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/heal
 **Parameters**:
 - `submissionId`: string (MongoDB ObjectId, required)
 
-**Response**:
-```json
-
-```
+ 
 
 ---
 
@@ -142,10 +124,7 @@ curl http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/heal
 - `sortBy`: string (submittedAt|score|attemptNumber, default: submittedAt)
 - `sortOrder`: string (asc|desc, default: desc)
 
-**Response**:
-```json
-
-```
+ 
 
 ### Retry Quiz (New Attempt)
 **POST** `/api/submission/quiz/:quizId/retry`  
@@ -171,10 +150,7 @@ curl http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/heal
 }
 ```
 
-**Response**:
-```json
-
-```
+ 
 
 ### Get Best Attempt for Quiz
 **GET** `/api/submission/quiz/:quizId/best`  
@@ -186,10 +162,7 @@ curl http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/heal
 **Query Parameters**:
 - `metric`: string (score|timeSpent|efficiency, default: score)
 
-**Response**:
-```json
-
-```
+ 
 
 ### Compare Quiz Attempts
 **GET** `/api/submission/quiz/:quizId/compare`  
@@ -203,10 +176,7 @@ curl http://quizzer-submission-1756068070.southindia.azurecontainer.io:3004/heal
 - `attempt2`: string (MongoDB ObjectId, required)
 - `includeDetails`: boolean (default: false)
 
-**Response**:
-```json
-
-```
+ 
 
 ---
 

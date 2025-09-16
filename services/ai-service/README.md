@@ -1,8 +1,8 @@
-# AI Service API Documentation - Live on Azure! 🚀
+# AI Service API Documentation 
 
 ## 🌐 Live Service URL
-**Base URL**: http://quizzer-ai-1756068070.southindia.azurecontainer.io:3003
-**Health Check**: http://quizzer-ai-1756068070.southindia.azurecontainer.io:3003/health
+**Base URL**: http://localhost:3003
+**Health Check**: http://localhost:3003/health
 
 **Port**: 3003  
 **Authentication**: Bearer token required for all endpoints  
@@ -11,7 +11,7 @@
 ## 🧪 Quick Test
 ```bash
 # Test the live service
-curl http://quizzer-ai-1756068070.southindia.azurecontainer.io:3003/health
+curl http://localhost:3003/health
 ```
 
 ---
@@ -30,18 +30,12 @@ curl http://quizzer-ai-1756068070.southindia.azurecontainer.io:3003/health
 ### Service Info
 **GET** `/`  
 **Authentication**: None  
-**Response**:
-```json
-
-```
+ 
 
 ### Health Check
 **GET** `/health`  
 **Authentication**: None  
-**Response**:
-```json
-
-```
+ 
 
 ---
 
@@ -80,10 +74,6 @@ curl http://quizzer-ai-1756068070.southindia.azurecontainer.io:3003/health
 }
 ```
 
-**Response**:
-```json
-
-```
 
 ### Generate Adaptive Questions
 **POST** `/api/ai/generate/adaptive`  
@@ -108,11 +98,6 @@ curl http://quizzer-ai-1756068070.southindia.azurecontainer.io:3003/health
 }
 ```
 
-**Response**:
-```json
-
-```
-
 ### Real-time Difficulty Adjustment
 **POST** `/api/ai/generate/adjust-difficulty`  
 **Authentication**: Required  
@@ -132,10 +117,7 @@ curl http://quizzer-ai-1756068070.southindia.azurecontainer.io:3003/health
 }
 ```
 
-**Response**:
-```json
-
-```
+ 
 
 ### Generate Hint for Question
 **POST** `/api/ai/generate/hint`  
@@ -154,10 +136,7 @@ curl http://quizzer-ai-1756068070.southindia.azurecontainer.io:3003/health
 }
 ```
 
-**Response**:
-```json
-
-```
+ 
 
 ---
 
@@ -190,10 +169,7 @@ curl http://quizzer-ai-1756068070.southindia.azurecontainer.io:3003/health
 }
 ```
 
-**Response**:
-```json
-
-```
+ 
 
 ### Get Improvement Suggestions
 **POST** `/api/ai/evaluate/suggestions`  
@@ -219,10 +195,7 @@ curl http://quizzer-ai-1756068070.southindia.azurecontainer.io:3003/health
 }
 ```
 
-**Response**:
-```json
-
-```
+ 
 
 ---
 
@@ -424,10 +397,7 @@ All endpoints return consistent error format:
   }
 }
 ```
-**Response**:
-```json
-
-```
+ 
 
 ### Generate Hint
 **POST** `/api/ai/generate/hint`  
@@ -447,10 +417,7 @@ All endpoints return consistent error format:
   }
 }
 ```
-**Response**:
-```json
-
-```
+ 
 
 ## AI Evaluation Endpoints
 
@@ -484,10 +451,7 @@ All endpoints return consistent error format:
   ]
 }
 ```
-**Response**:
-```json
-
-```
+ 
 
 ### Get Performance Suggestions
 **POST** `/api/ai/evaluate/suggestions`  
@@ -507,10 +471,7 @@ All endpoints return consistent error format:
   "grade": "number (optional, 1-12)"
 }
 ```
-**Response**:
-```json
-
-```
+ 
 
 ## AI Models & Strategy
 

@@ -1,8 +1,8 @@
 # Analytics Service API Documentation - Live on Azure! 🚀
 
 ## 🌐 Live Service URL
-**Base URL**: http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005
-**Health Check**: http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/health
+**Base URL**: http://localhost:3005
+**Health Check**: http://localhost:3005/health
 
 **Port**: 3005  
 **Authentication**: Bearer token required for protected endpoints  
@@ -11,7 +11,7 @@
 ## 🧪 Quick Test
 ```bash
 # Test the live service
-curl http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/health
+curl http://localhost:3005/health
 ```
 
 ---
@@ -30,18 +30,12 @@ curl http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/healt
 ### Service Info
 **GET** `/`  
 **Authentication**: None  
-**Response**:
-```json
-
-```
+ 
 
 ### Health Check
 **GET** `/health`  
 **Authentication**: None  
-**Response**:
-```json
-
-```
+ 
 
 ---
 
@@ -55,10 +49,7 @@ curl http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/healt
 - `timeframe`: string (7d|30d|90d|1y|all, default: 30d)
 - `includeDetails`: boolean (default: false)
 
-**Response**:
-```json
-
-```
+ 
 
 ### Get Subject-Specific Performance
 **GET** `/api/analytics/performance/:subject/:grade`  
@@ -72,10 +63,7 @@ curl http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/healt
 - `timeframe`: string (7d|30d|90d|1y|all, default: 30d)
 - `includeTopics`: boolean (default: false)
 
-**Response**:
-```json
-
-```
+ 
 
 ### Get Performance Trends
 **GET** `/api/analytics/trends`  
@@ -87,10 +75,7 @@ curl http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/healt
 - `subject`: string (optional)
 - `grade`: number (1-12, optional)
 
-**Response**:
-```json
-
-```
+ 
 
 ### Get Topic-wise Analysis
 **GET** `/api/analytics/topics`  
@@ -102,10 +87,7 @@ curl http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/healt
 - `timeframe`: string (7d|30d|90d|1y|all, default: 30d)
 - `minAttempts`: number (default: 3)
 
-**Response**:
-```json
-
-```
+ 
 
 ### Update User Performance (Internal API)
 **POST** `/api/analytics/performance/update`  
@@ -130,10 +112,7 @@ curl http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/healt
 }
 ```
 
-**Response**:
-```json
-
-```
+ 
 
 ---
 
@@ -152,10 +131,7 @@ curl http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/healt
 - `includeStats`: boolean (default: false)
 - `includeUserContext`: boolean (default: false, requires auth)
 
-**Response**:
-```json
-
-```
+ 
 
 ### Get Top Performers
 **GET** `/api/leaderboard/top`  
@@ -167,10 +143,7 @@ curl http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/healt
 - `limit`: number (default: 5, max: 20)
 - `metric`: string (score|efficiency|consistency, default: score)
 
-**Response**:
-```json
-
-```
+ 
 
 ### Get User's Rank
 **GET** `/api/leaderboard/my-rank`  
@@ -182,10 +155,7 @@ curl http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/healt
 - `timeframe`: string (7d|30d|90d|1y|all, default: 30d)
 - `sortBy`: string (totalScore|averageScore|quizCount|efficiency, default: totalScore)
 
-**Response**:
-```json
-
-```
+ 
 
 ---
 
@@ -200,10 +170,7 @@ curl http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/healt
 - `includeComparison`: boolean (default: false)
 - `benchmarkType`: string (grade_average|subject_average|peer_group, optional)
 
-**Response**:
-```json
-
-```
+ 
 
 ### Get Learning Progress Analysis
 **GET** `/api/analytics/progress`  
@@ -215,10 +182,7 @@ curl http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/healt
 - `timeframe`: string (7d|30d|90d|1y|all, default: 30d)
 - `includeGoals`: boolean (default: false)
 
-**Response**:
-```json
-
-```
+ 
 
 ### Get Weakness & Strength Analysis
 **GET** `/api/analytics/analysis/strengths-weaknesses`  
@@ -229,10 +193,7 @@ curl http://quizzer-analytics-1756068070.southindia.azurecontainer.io:3005/healt
 - `minAttempts`: number (default: 3)
 - `includeRecommendations`: boolean (default: false)
 
-**Response**:
-```json
-
-```
+ 
 
 ---
 

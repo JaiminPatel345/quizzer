@@ -1,8 +1,8 @@
 # Quiz Service API Documentation - Live on Azure! 🚀
 
 ## 🌐 Live Service URL
-**Base URL**: http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3002
-**Health Check**: http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3002/health
+**Base URL**: http://localhost:3002
+**Health Check**: http://localhost:3002/health
 
 **Port**: 3002  
 **Authentication**: Bearer token required for protected endpoints  
@@ -11,7 +11,7 @@
 ## 🧪 Quick Test
 ```bash
 # Test the live service
-curl http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3002/health
+curl http://localhost:3002/health
 ```
 
 ---
@@ -78,10 +78,7 @@ curl http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3002/health
 - `sortBy`: string (createdAt|title|metadata.grade|metadata.subject, default: createdAt)
 - `sortOrder`: string (asc|desc, default: desc)
 
-**Response**:
-```json
-
-```
+ 
 
 ### Get Quiz by ID
 **GET** `/api/quiz/:quizId`  
@@ -89,10 +86,7 @@ curl http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3002/health
 **Parameters**:
 - `quizId`: string (MongoDB ObjectId, required)
 
-**Response**:
-```json
-
-```
+ 
 
 ### Create Quiz ( not for client but for internal service )
 **POST** `/api/quiz`  
@@ -148,10 +142,7 @@ curl http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3002/health
 }
 ```
 
-**Response**:
-```json
-
-```
+ 
 
 ### Delete Quiz
 **DELETE** `/api/quiz/:quizId`  
@@ -160,10 +151,7 @@ curl http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3002/health
 **Parameters**:
 - `quizId`: string (MongoDB ObjectId, required)
 
-**Response**:
-```json
-
-```
+ 
 
 ### Duplicate Quiz
 **POST** `/api/quiz/:quizId/duplicate`  
@@ -270,10 +258,7 @@ curl http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3002/health
 }
 ```
 
-**Response**:
-```json
-
-```
+ 
 
 ---
 
@@ -292,10 +277,7 @@ curl http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3002/health
 - `sortBy`: string (createdAt|score|timeSpent, default: createdAt)
 - `sortOrder`: string (asc|desc, default: desc)
 
-**Response**:
-```json
-
-```
+ 
 
 ### Get Submission Suggestions
 **GET** `/api/quiz/submission/:submissionId/suggestions`  
@@ -303,19 +285,13 @@ curl http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3002/health
 **Parameters**:
 - `submissionId`: string (MongoDB ObjectId, required)
 
-**Response**:
-```json
-
-```
+ 
 
 ### Get Personalized Suggestions
 **GET** `/api/quiz/suggestions`  
 **Authentication**: Required  
 
-**Response**:
-```json
-
-```
+ 
 
 ---
 
@@ -346,10 +322,7 @@ curl http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3002/health
 }
 ```
 
-**Response**:
-```json
-
-```
+ 
 
 ### Adjust Quiz Difficulty Real-time
 **POST** `/api/quiz/adjust-difficulty`  
@@ -369,10 +342,7 @@ curl http://quizzer-quiz-1756068070.southindia.azurecontainer.io:3002/health
 }
 ```
 
-**Response**:
-```json
-
-```
+ 
 
 ---
 

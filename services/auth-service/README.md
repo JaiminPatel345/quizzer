@@ -3,8 +3,8 @@
 Authentication and user management service for the AI Quizzer platform.
 
 ## 🌐 Live Service URL
-**Base URL**: http://quizzer-auth-1756088522.southindia.azurecontainer.io:3001
-**Health Check**: http://quizzer-auth-1756088522.southindia.azurecontainer.io:3001/health
+**Base URL**: http://localhost:3001
+**Health Check**: http://localhost:3001/health
 
 ## Database
 MongoDB Atlas (Online)
@@ -15,7 +15,7 @@ User authentication, registration, profile management, and JWT token handling.
 ## 🧪 Quick Test
 ```bash
 # Test the live service
-curl http://quizzer-auth-1756088522.southindia.azurecontainer.io:3001/health
+curl http://localhost:3001/health
 ```
 
 ---
