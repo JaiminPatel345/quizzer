@@ -4,36 +4,193 @@ A scalable microservices-based quiz platform with AI-powered question generation
 
 ## 📋 Table of Contents
 
-1. [Key Features](#key-features)
-2. [Quick Start Guide](#quick-start-guide)
-3. [API Flows & Testing](#api-flows--testing)
-4. [Service Documentation](#service-documentation)
-5. [Technology Stack](#technology-stack)
-6. [Development & Deployment](#development--deployment)
+1. [🏗️ Architecture Overview](#️-architecture-overview)
+2. [🌟 Key Features](#-key-features)
+3. [🚀 Quick Start Guide](#-quick-start-guide)
+4. [📡 API Flows & Testing](#-api-flows--testing)
+5. [📚 Service Documentation](#-service-documentation)
+6. [🛠️ Technology Stack](#️-technology-stack)
+7. [🔧 Development & Deployment](#-development--deployment)
 
 ---
 
 ## 🏗️ Architecture Overview
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌───────────────────┐
-│   Auth Service  │    │   Quiz Service  │    │   AI Service      │
-│                 │    │                 │    │                   │ 
-│ • Authentication│    │ • Quiz CRUD     │    │ • Question Gen    │
-│ • User Profile  │    │ • Content Mgmt  │    │ • AI Evaluation   │
-│ • JWT Tokens    │    │ • Quiz History  │    │ • Hint Generation │
-│                 │    │ • Adaptive Quiz │    │ • Difficulty Adj  │
-└─────────────────┘    └─────────────────┘    └───────────────────┘
+### 🎯 System Architecture Diagram
 
-┌──────────────────┐    ┌─────────────────┐    
-│Submission Svc    │    │Analytics Service│    
-│                  │    │                 │    
-│ • Quiz Scoring   │    │ • Performance   │    
-│ • Smart Grading  │    │ • Leaderboards  │    
-│ • Submission Mgmt│    │ • Trend Analysis│    
-│ • Quiz Retry     │    │ • User Rankings │    
-│ • Attempt History│    │ • Statistics    │    
-└──────────────────┘    └─────────────────┘    
+```mermaid
+graph TB
+    %% External APIs
+    subgraph "External AI APIs"
+        GROQ[🤖 Groq API<br/>llama-3.1-70b-versatile]
+        GEMINI[🧠 Gemini API<br/>gemini-2.0-flash]
+    end
+
+    %% External Infrastructure
+    subgraph "Infrastructure"
+        MONGO[(🍃 MongoDB<br/>Database)]
+        REDIS[(⚡ Redis<br/>Cache/Sessions)]
+        DOCKER[🐳 Docker<br/>Containerization]
+    end
+
+    %% Client Layer
+    subgraph "Client Layer"
+        CLIENT[📱 Client App<br/>React/Mobile]
+    end
+
+    %% Microservices
+    subgraph "Microservices Architecture"
+        subgraph "Auth Service Port 3001"
+            AUTH[Auth Controller]
+            JWT[JWT Middleware]
+            BCRYPT[Password Hashing]
+            USERMODEL[User Model]
+        end
+
+        subgraph "Quiz Service Port 3002"
+            QUIZ[Quiz Controller]
+            QUIZMODEL[Quiz Model]
+            ADAPTIVE[Adaptive Logic]
+            HINTS[Hint System]
+        end
+
+        subgraph "AI Service Port 3003"
+            AIGEN[Generation Controller]
+            AIEVAL[Evaluation Controller]
+            GROQSVC[Groq Service]
+            GEMINISVC[Gemini Service]
+            DIFFICULTY[Adaptive Difficulty]
+        end
+
+        subgraph "Submission Service Port 3004"
+            SUBMIT[Submission Controller]
+            SCORING[Smart Scoring]
+            FUZZY[Fuzzy Matching]
+            RETRY[Retry System]
+            ATTEMPTS[Attempt Tracking]
+        end
+
+        subgraph "Analytics Service Port 3005"
+            ANALYTICS[Analytics Controller]
+            LEADERBOARD[Leaderboard Controller]
+            PERFORMANCE[Performance Tracking]
+            TRENDS[Trend Analysis]
+        end
+    end
+
+    %% Data Flow Connections
+    CLIENT -->|📤 HTTP Requests| AUTH
+    CLIENT -->|📤 Authenticated Requests| QUIZ
+    CLIENT -->|📤 Authenticated Requests| SUBMIT
+    CLIENT -->|📥 Public Data| ANALYTICS
+
+    %% Inter-service Communication
+    AUTH -.->|🔑 Token Validation| QUIZ
+    AUTH -.->|🔑 Token Validation| SUBMIT
+    AUTH -.->|🔑 Token Validation| ANALYTICS
+
+    QUIZ -->|🧠 Generate Questions| AIGEN
+    QUIZ -->|💡 Request Hints| AIGEN
+    QUIZ -->|⚙️ Adjust Difficulty| DIFFICULTY
+
+    SUBMIT -->|🤖 Request AI Evaluation| AIEVAL
+    SUBMIT -->|📊 Send Performance Data| ANALYTICS
+
+    ANALYTICS -->|📈 Get User Stats| SUBMIT
+    ANALYTICS -->|🏆 Update Leaderboards| SUBMIT
+
+    %% External Connections
+    GROQSVC -->|API Calls| GROQ
+    GEMINISVC -->|API Calls| GEMINI
+
+    %% Database Connections
+    USERMODEL -->|Store/Retrieve| MONGO
+    QUIZMODEL -->|Store/Retrieve| MONGO
+    SUBMIT -->|Store/Retrieve| MONGO
+    ANALYTICS -->|Store/Retrieve| MONGO
+
+    %% Cache Connections
+    JWT -.->|Session Management| REDIS
+    PERFORMANCE -.->|Cache Results| REDIS
+
+    %% Styling
+    classDef serviceBox fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef aiBox fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef dbBox fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef clientBox fill:#fff3e0,stroke:#e65100,stroke-width:2px
+
+    class AUTH,QUIZ,AIGEN,SUBMIT,ANALYTICS serviceBox
+    class GROQ,GEMINI,GROQSVC,GEMINISVC,AIEVAL aiBox
+    class MONGO,REDIS dbBox
+    class CLIENT clientBox
+```
+
+### 🔄 Service Communication Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                           🔄 REQUEST FLOW DIAGRAM                              │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  1. 🔐 AUTHENTICATION                                                           │
+│     Client → Auth Service → JWT Token → All Services                           │
+│                                                                                 │
+│  2. 📝 QUIZ CREATION                                                            │
+│     Client → Quiz Service → AI Service (Groq/Gemini) → Generated Questions     │
+│                                                                                 │
+│  3. 🎯 QUIZ TAKING                                                              │
+│     Client → Quiz Service → Hint Requests → AI Service                         │
+│                           → Difficulty Adjustment → AI Service                 │
+│                                                                                 │
+│  4. 📊 SUBMISSION                                                               │
+│     Client → Submission Service → AI Evaluation → AI Service                   │
+│                                 → Performance Data → Analytics Service         │
+│                                                                                 │
+│  5. 📈 ANALYTICS                                                                │
+│     Analytics Service ← Performance Data ← Submission Service                  │
+│     Client ← Leaderboards/Stats ← Analytics Service                            │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 🛠️ Technology Stack per Service
+
+| Service | Port | Database | Key Technologies | External APIs |
+|---------|------|----------|------------------|---------------|
+| **🔐 Auth** | 3001 | MongoDB | JWT, bcrypt, Express | - |
+| **📝 Quiz** | 3002 | MongoDB | Express, Joi validation | Auth Service |
+| **🤖 AI** | 3003 | MongoDB | Groq SDK, Google Gen AI | Groq, Gemini |
+| **📊 Submission** | 3004 | MongoDB | Fuzzy matching, Express | AI Service |
+| **📈 Analytics** | 3005 | MongoDB | Express, Redis cache | Submission Service |
+
+### 🔒 Security & Middleware
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    🛡️ SECURITY LAYERS                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  🔐 Authentication Layer                                        │
+│  ├── JWT Token-based authentication                             │
+│  ├── Password hashing with bcrypt                               │
+│  └── Token validation across services                           │
+│                                                                 │
+│  🚦 Rate Limiting                                               │
+│  ├── Request throttling per endpoint                            │
+│  ├── IP-based rate limiting                                     │
+│  └── User-based rate limiting                                   │
+│                                                                 │
+│  ✅ Input Validation                                            │
+│  ├── Joi schema validation                                      │
+│  ├── Request sanitization                                       │
+│  └── Type-safe TypeScript interfaces                            │
+│                                                                 │
+│  🎯 Error Handling                                              │
+│  ├── Centralized error management                               │
+│  ├── Consistent error responses                                 │
+│  └── Logging with Winston                                       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 
@@ -323,34 +480,135 @@ All protected endpoints require Bearer token authentication. Start by registerin
 
 ## 🛠️ Technology Stack
 
-### Core Technologies
+### 🎯 Core Architecture
 
-- **Runtime**: Node.js 20+ with TypeScript
-- **Framework**: Express.js with middleware ecosystem
-- **Database**: MongoDB 6.0+ with Mongoose ODM
-- **Caching**: Redis 7.0+ for session and data caching
-- **Authentication**: JWT with bcrypt password hashing
+```
+📊 Microservices Architecture
+├── 🔐 Authentication & Authorization
+│   ├── JWT (JSON Web Tokens)
+│   ├── bcrypt (Password Hashing)
+│   └── Express middleware
+├── 🌐 API Gateway Pattern
+│   ├── RESTful APIs
+│   ├── CORS Configuration
+│   └── Rate Limiting
+└── 📡 Inter-Service Communication
+    ├── HTTP REST APIs
+    ├── Service Discovery
+    └── Circuit Breaker Pattern (planned)
+```
 
-### AI Integration
+### 💻 Runtime & Framework
 
-- **Primary AI**: Groq API (llama-3.1-70b-versatile)
-- **Fallback AI**: Google Gemini Pro
-- **Strategy**: Automatic failover for reliability
+| Component | Technology | Version | Purpose |
+|-----------|------------|---------|---------|
+| **Runtime** | Node.js | 20+ | JavaScript runtime |
+| **Language** | TypeScript | 5.x | Type-safe development |
+| **Framework** | Express.js | 4.x | Web application framework |
+| **Validation** | Joi | 17.x | Schema validation |
+| **HTTP Client** | Axios | 1.x | Service-to-service communication |
 
-### Development Tools
+### 🗄️ Data Layer
 
-- **Validation**: Joi schema validation
-- **Logging**: Winston with structured logging
-- **Rate Limiting**: Express-rate-limit
-- **CORS**: Configurable cross-origin resource sharing
-- **Testing**: Jest (planned implementation)
+| Component | Technology | Purpose | Configuration |
+|-----------|------------|---------|---------------|
+| **Primary DB** | MongoDB | Document storage | Mongoose ODM |
+| **Caching** | Redis | Session & data cache | ioredis client |
+| **Search** | MongoDB Text Index | Full-text search | Compound indexes |
+| **Analytics** | MongoDB Aggregation | Data analysis | Pipeline queries |
 
-### DevOps & Deployment
+### 🤖 AI Integration Stack
 
-- **Containerization**: Docker & Docker Compose
-- **Process Management**: PM2 for production
-- **Environment**: dotenv configuration
-- **Monitoring**: Health check endpoints
+```
+🧠 AI Service Architecture
+├── 🚀 Primary: Groq API
+│   ├── Model: llama-3.1-70b-versatile
+│   ├── Use: Fast question generation
+│   └── Rate Limit: 30 requests/5min
+├── 🎯 Fallback: Google Gemini
+│   ├── Model: gemini-2.0-flash
+│   ├── Use: Evaluation & complex tasks
+│   └── Rate Limit: 10 requests/5min
+└── 🔄 Fallback Strategy
+    ├── Automatic failover
+    ├── Response caching
+    └── Error recovery
+```
+
+### 🛡️ Security Stack
+
+| Layer | Technology | Implementation |
+|-------|------------|----------------|
+| **Authentication** | JWT + bcrypt | Token-based auth with password hashing |
+| **Authorization** | Custom middleware | Role-based access control |
+| **Rate Limiting** | express-rate-limit | Per-endpoint throttling |
+| **Input Validation** | Joi schemas | Request/response validation |
+| **CORS** | cors middleware | Cross-origin configuration |
+| **Logging** | Winston | Structured security logging |
+
+### 🔧 Development Tools
+
+```
+🛠️ Development Ecosystem
+├── 📦 Package Management
+│   ├── Yarn (preferred)
+│   └── npm (alternative)
+├── 🔨 Build Tools
+│   ├── TypeScript Compiler
+│   ├── ts-node (development)
+│   └── ESM modules
+├── 🐛 Debugging
+│   ├── VS Code debugger
+│   ├── Winston logging
+│   └── Error stack traces
+└── 📋 Code Quality
+    ├── ESLint (planned)
+    ├── Prettier (planned)
+    └── Husky git hooks (planned)
+```
+
+### 🐳 DevOps & Infrastructure
+
+| Component | Technology | Purpose | Configuration |
+|-----------|------------|---------|---------------|
+| **Containerization** | Docker | Service isolation | Multi-stage builds |
+| **Orchestration** | Docker Compose | Local development | Service dependencies |
+| **Process Management** | PM2 | Production deployment | Cluster mode |
+| **Environment Config** | dotenv | Configuration management | Per-service .env |
+| **Health Monitoring** | Custom endpoints | Service health checks | /health routes |
+| **Logging** | Winston + File rotation | Centralized logging | JSON structured logs |
+
+### 📊 Service-Specific Technologies
+
+#### 🔐 Auth Service
+- **JWT**: jsonwebtoken library
+- **Password**: bcrypt with salt rounds
+- **Session**: Redis-based session storage
+- **Validation**: User registration/login schemas
+
+#### 📝 Quiz Service  
+- **Content**: Rich quiz data modeling
+- **Search**: MongoDB text indexes
+- **Validation**: Quiz structure schemas
+- **Integration**: AI service communication
+
+#### 🤖 AI Service
+- **Groq SDK**: groq-sdk for LLM integration  
+- **Gemini SDK**: @google/generative-ai
+- **Parser**: Custom JSON response parsing
+- **Cache**: Redis for response caching
+
+#### 📊 Submission Service
+- **Scoring**: Custom fuzzy matching algorithms
+- **Analytics**: Performance calculation
+- **Retry Logic**: Attempt management system
+- **Validation**: Answer format validation
+
+#### 📈 Analytics Service
+- **Aggregation**: MongoDB aggregation pipelines
+- **Leaderboards**: Real-time ranking calculations
+- **Caching**: Redis for performance optimization
+- **Statistics**: Complex analytics queries
 
 ---
 
